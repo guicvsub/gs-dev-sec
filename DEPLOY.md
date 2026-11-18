@@ -49,7 +49,7 @@ porta 80 da instância. O núcleo Python (`main.py`) **não** é iniciado pelo p
 4. **Não** marque "Add a README file", ".gitignore" ou "license": o projeto já tem esses
    arquivos e o push seria rejeitado.
 5. Clique em **Create repository** e copie a URL, por exemplo
-   `https://github.com/SEU_USUARIO/travessia-mvp.git`.
+   `https://github.com/guicvsub/travessia-mvp.git`.
 
 O projeto já está com um repositório Git local iniciado na branch `main`. Antes de
 commitar, confirme que o `.env` real **não** será enviado:
@@ -65,7 +65,7 @@ aparecer no `git status`, **pare** e confira o `.gitignore`.
 ```powershell
 git add .
 git commit -m "feat: MVP Travessia com pipeline DevSecOps"
-git remote add origin https://github.com/SEU_USUARIO/travessia-mvp.git
+git remote add origin https://github.com/guicvsub/gs-dev-sec.git
 git push -u origin main
 ```
 
