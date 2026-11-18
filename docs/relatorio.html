@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deploy Blindado — Travessia</title>
+<style>
+  :root {
+    --navy: #0f172a;
+    --slate: #334155;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --cyan: #0891b2;
+    --cyan-dark: #155e75;
+    --orange: #ea580c;
+    --green: #16a34a;
+    --red: #dc2626;
+    --bg: #f8fafc;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0 auto;
+    max-width: 920px;
+    padding: 28px 28px 60px;
+    background: #fff;
+    color: #1e293b;
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  h1, h2, h3 { color: var(--navy); line-height: 1.2; }
+  h2 {
+    font-size: 24px;
+    margin: 42px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--line);
+  }
+  h2 .num {
+    display: inline-block;
+    min-width: 34px;
+    color: var(--cyan);
+  }
+  h3 { font-size: 18px; margin: 24px 0 8px; }
+  p { margin: 10px 0; }
+  a { color: #0e7490; text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--orange); }
+  code, pre {
+    font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+    font-size: 13px;
+  }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; }
+  pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 14px 16px;
+    border-radius: 10px;
+    overflow-x: auto;
+    line-height: 1.45;
+  }
+  pre code { background: transparent; padding: 0; color: inherit; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0 20px;
+    font-size: 13px;
+  }
+  th {
+    background: var(--navy);
+    color: #fff;
+    text-align: left;
+    padding: 9px 10px;
+    font-weight: 600;
+  }
+  td {
+    border-bottom: 1px solid var(--line);
+    padding: 8px 10px;
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .num-col { text-align: right; white-space: nowrap; }
+
+  .no-print { }
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 22px;
+    font-size: 13px;
+  }
+  .toolbar strong { color: #92400e; }
+  .btn {
+    display: inline-block;
+    background: var(--navy);
+    color: #fff !important;
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .btn:hover { background: var(--cyan-dark); }
+  .btn.secondary { background: #fff; color: var(--navy) !important; border: 1px solid #cbd5e1; }
+  .btn.secondary:hover { background: #f1f5f9; }
+
+  .cover {
+    background: linear-gradient(135deg, #0f172a 0%, #164e63 55%, #0e7490 100%);
+    color: #fff;
+    border-radius: 18px;
+    padding: 42px 44px 36px;
+    margin-bottom: 28px;
+  }
+  .cover .kicker {
+    text-transform: uppercase;
+    letter-spacing: 1.6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #a5f3fc;
+    margin-bottom: 10px;
+  }
+  .cover h1 {
+    color: #fff;
+    font-size: 40px;
+    margin: 0 0 8px;
+    letter-spacing: -0.5px;
+  }
+  .cover .subtitle {
+    color: #e0f2fe;
+    font-size: 17px;
+    max-width: 720px;
+    margin: 0 0 22px;
+  }
+  .cover .meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 24px;
+    font-size: 13px;
+    color: #cffafe;
+    border-top: 1px solid rgba(255,255,255,.22);
+    padding-top: 18px;
+  }
+  .cover .meta b { color: #fff; }
+  .badges { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 18px; }
+  .badge {
+    border: 1px solid rgba(255,255,255,.35);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: #ecfeff;
+    background: rgba(255,255,255,.08);
+  }
+
+  .toc {
+    background: #f8fafc;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 22px;
+    margin: 22px 0 8px;
+  }
+  .toc h2 { margin: 0 0 8px; border: 0; font-size: 16px; padding: 0; }
+  .toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 36px; font-size: 13px; }
+  .toc li { margin: 4px 0; }
+
+  .callout {
+    border-left: 4px solid var(--cyan);
+    background: #ecfeff;
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .callout.warn { border-left-color: var(--orange); background: #fff7ed; }
+  .callout.ok { border-left-color: var(--green); background: #f0fdf4; }
+  .callout strong { color: var(--navy); }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 13px 15px;
+    background: #fff;
+  }
+  .card h3 { margin: 0 0 4px; font-size: 15px; }
+  .card p { margin: 0; font-size: 13px; color: var(--slate); }
+
+  figure.shot {
+    margin: 18px 0 24px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
+    background: #fff;
+    page-break-inside: avoid;
+  }
+  figure.shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+  }
+  figure.shot .ph {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    min-height: 170px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: var(--muted);
+    text-align: center;
+    padding: 22px;
+    font-size: 13px;
+  }
+  figure.shot figcaption {
+    margin-top: 9px;
+    font-size: 12.5px;
+    color: var(--slate);
+  }
+  figure.shot figcaption b { color: var(--navy); }
+
+  .arch {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px;
+    background: #fff;
+    margin: 14px 0 18px;
+  }
+  .arch img { width: 100%; height: auto; display: block; border-radius: 8px; }
+
+  .pill {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 2px 9px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .2px;
+  }
+  .pill.red { background: #fee2e2; color: #991b1b; }
+  .pill.green { background: #dcfce7; color: #166534; }
+  .pill.cyan { background: #cffafe; color: #155e75; }
+  .pill.orange { background: #ffedd5; color: #9a3412; }
+
+  .footer {
+    margin-top: 46px;
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  @media print {
+    @page { size: A4; margin: 14mm; }
+    body { max-width: none; padding: 0; font-size: 10.5pt; line-height: 1.45; }
+    .no-print { display: none !important; }
+    .cover {
+      border-radius: 0;
+      padding: 30px 32px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .cover h1 { font-size: 30pt; }
+    h2 { font-size: 16pt; page-break-after: avoid; }
+    h3 { font-size: 12pt; page-break-after: avoid; }
+    table, figure.shot, .arch, .callout, .card { page-break-inside: avoid; }
+    tr:nth-child(even) td { background: #f8fafc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    th { background: var(--navy) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .toc ol { columns: 2; }
+    a { color: #0f172a; }
+    .page-break { page-break-before: always; }
+    figure.shot .ph { min-height: 130px; }
+  }
+  @media (max-width: 640px) {
+    .cover { padding: 28px 24px; }
+    .cover h1 { font-size: 30px; }
+    .cover .meta { grid-template-columns: 1fr; }
+    .cards { grid-template-columns: 1fr; }
+    .toc ol { columns: 1; }
+    body { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar no-print">
+  <strong>Antes de exportar:</strong> preencha os campos <code>[PREENCHER]</code>, troque
+  <code>SEU_USUARIO/SEU_REPO</code> e <code>IP_PUBLICO</code>, e salve os prints em
+  <code>docs/prints/</code>. Depois clique em <b>Imprimir / Salvar PDF</b>.
+  <button class="btn" onclick="window.print()">Imprimir / Salvar PDF</button>
+  <a class="btn secondary" href="../README.md">Abrir README</a>
+</div>
+
+<header class="cover">
+  <div class="kicker">FIAP • Global Solution 2026.2 • CitizenTech</div>
+  <h1>Deploy Blindado — Travessia</h1>
+  <p class="subtitle">Do commit ao MVP no ar: container, Terraform, pipeline DevSecOps
+  com Gitleaks e Semgrep, deploy automático via SSM e observabilidade na AWS.</p>
+  <div class="meta">
+    <div><b>Equipe:</b> [PREENCHER: nome da equipe]</div>
+    <div><b>Disciplina:</b> Secure DevOps Tools &amp; Cloud Computing</div>
+    <div><b>Integrantes:</b> [Nome 1 — RM], [Nome 2 — RM], [Nome 3 — RM]</div>
+    <div><b>Professor:</b> Cleórbete Santos</div>
+    <div><b>Repositório:</b> <a href="https://github.com/SEU_USUARIO/SEU_REPO" style="color:#a5f3fc">github.com/SEU_USUARIO/SEU_REPO</a></div>
+    <div><b>MVP:</b> <a href="http://IP_PUBLICO" style="color:#a5f3fc">http://IP_PUBLICO</a></div>
+  </div>
+  <div class="badges">
+    <span class="badge">Docker</span>
+    <span class="badge">Terraform</span>
+    <span class="badge">AWS EC2 + ECR</span>
+    <span class="badge">GitHub Actions</span>
+    <span class="badge">Gitleaks</span>
+    <span class="badge">Semgrep</span>
+    <span class="badge">CloudWatch + SNS</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>Sumário</h2>
+  <ol>
+    <li><a href="#resumo">Resumo executivo</a></li>
+    <li><a href="#mvp">O MVP</a></li>
+    <li><a href="#arquitetura">Arquitetura</a></li>
+    <li><a href="#pipeline">Pipeline DevSecOps</a></li>
+    <li><a href="#seguranca">Segurança</a></li>
+    <li><a href="#observabilidade">Observabilidade</a></li>
+    <li><a href="#custos">Custos</a></li>
+    <li><a href="#evidencias">Evidências</a></li>
+    <li><a href="#reproduzir">Como reproduzir</a></li>
+    <li><a href="#limitacoes">Limitações e evoluções</a></li>
+    <li><a href="#conclusao">Conclusão</a></li>
+    <li><a href="#referencias">Referências</a></li>
+  </ol>
+</nav>
+
+<section id="resumo">
+  <h2><span class="num">1.</span>Resumo executivo</h2>
+  <p><b>Travessia</b> é o MVP da CitizenTech para apoiar pessoas cegas ou com baixa visão
+  na travessia de ruas. Uma câmera vestível filma a via; um modelo de visão computacional
+  reconhece faixa de pedestre, semáforo e veículos; o resultado vira um aviso simples em
+  tela, voz e vibração.</p>
+
+  <p>Para o <b>Deploy Blindado</b>, o site foi empacotado em Docker e publicado na AWS por
+  um pipeline de ponta a ponta. O deploy só acontece depois que <b>Gitleaks</b> e
+  <b>Semgrep</b> passam. A infraestrutura é criada por <b>Terraform</b>; a imagem é
+  publicada no <b>ECR</b>; o container sobe na <b>EC2</b> via <b>SSM</b>, sem SSH. Logs,
+  dashboard, alarmes e alerta por e-mail completam a observabilidade.</p>
+
+  <div class="cards">
+    <div class="card">
+      <h3>Segurança que bloqueia</h3>
+      <p>Gitleaks no histórico completo e Semgrep com SARIF. Falhou, o deploy não inicia.</p>
+    </div>
+    <div class="card">
+      <h3>Infraestrutura reproduzível</h3>
+      <p>VPC, EC2, EIP, ECR, IAM, CloudWatch, SNS e S3 declarados em Terraform.</p>
+    </div>
+    <div class="card">
+      <h3>Entrega automática</h3>
+      <p>Build, push no ECR, deploy via SSM e verificação HTTP 200 no mesmo workflow.</p>
+    </div>
+    <div class="card">
+      <h3>Observabilidade</h3>
+      <p>Logs JSON, métrica de 5xx, dashboard com 5 widgets e 3 alarmes com SNS.</p>
+    </div>
+  </div>
+</section>
+
+<section id="mvp">
+  <h2><span class="num">2.</span>O MVP</h2>
+  <h3>Problema</h3>
+  <p>A travessia de ruas é uma das tarefas mais arriscadas para pessoas com deficiência
+  visual. Semáforos, faixas e veículos mudam rapidamente, e a bengala ou o cão-guia não
+  informam a cor do semáforo. A informação existe no ambiente, mas não chega de forma
+  acessível.</p>
+
+  <h3>Solução</h3>
+  <p>Uma câmera ESP32-CAM vestível captura a cena à frente. O núcleo em Python envia
+  frames ao modelo do Roboflow (classes <code>pedestrian_crossing</code>,
+  <code>green_light</code>, <code>red_light</code> e <code>vehicle</code>), aplica regras
+  de decisão e gera uma mensagem curta, como “Faixa de pedestre e semáforo verde a
+  frente”.</p>
+
+  <p>No MVP, a câmera é substituída por um vídeo público do YouTube, gravado em uma rua de
+  São Paulo. O site em React mostra o vídeo com as caixas de detecção e o aviso acessível.
+  A troca do vídeo pela câmera exige mudar apenas a fonte da imagem; a análise e as regras
+  continuam iguais.</p>
+
+  <table>
+    <tr><th>Parte</th><th>O que é</th><th>Entra no deploy?</th></tr>
+    <tr><td><code>frontend/</code></td><td>Site React 19 + Vite 8 + Tailwind 4, com detecções salvas</td><td><span class="pill green">Sim — MVP público</span></td></tr>
+    <tr><td><code>main.py</code> + <code>utility/</code></td><td>Núcleo Python + OpenCV + Roboflow</td><td><span class="pill orange">Não — opcional</span></td></tr>
+    <tr><td><code>Dockerfile</code></td><td>Build do site + Nginx unprivileged</td><td><span class="pill green">Sim</span></td></tr>
+    <tr><td><code>Dockerfile.core</code></td><td>Imagem do núcleo Python headless</td><td><span class="pill cyan">Opcional, local</span></td></tr>
+  </table>
+</section>
+
+<section id="arquitetura" class="page-break">
+  <h2><span class="num">3.</span>Arquitetura</h2>
+  <div class="arch">
+    <img src="arquitetura.svg" alt="Diagrama da arquitetura: GitHub Actions, Terraform, AWS, EC2, ECR, CloudWatch, SNS, S3 e navegador do cidadão.">
+  </div>
+
+  <table>
+    <tr><th>Camada</th><th>Serviço</th><th>Configuração</th></tr>
+    <tr><td>Rede</td><td>VPC + subnet pública + Internet Gateway</td><td><code>10.20.0.0/16</code>, subnet <code>10.20.1.0/24</code></td></tr>
+    <tr><td>Computação</td><td>EC2 <code>t3.micro</code></td><td>Ubuntu 24.04, Docker, Nginx não-root na 8080</td></tr>
+    <tr><td>Acesso público</td><td>Elastic IP</td><td>HTTP 80; sem SSH; security group só com 80/tcp</td></tr>
+    <tr><td>Registry</td><td>Amazon ECR</td><td><code>travessia-web</code>, tags imutáveis, scan on push</td></tr>
+    <tr><td>Administração</td><td>SSM Session Manager</td><td>IAM role com <code>AmazonSSMManagedInstanceCore</code></td></tr>
+    <tr><td>Observabilidade</td><td>CloudWatch + SNS</td><td>Logs JSON, dashboard, métricas e alarmes</td></tr>
+    <tr><td>Estado</td><td>S3</td><td>Versionado, criptografado, acesso público bloqueado, lock nativo</td></tr>
+    <tr><td>CI/CD</td><td>GitHub Actions</td><td>Gitleaks, Semgrep, Terraform, Docker e SSM</td></tr>
+  </table>
+
+  <h3>Decisões de arquitetura</h3>
+  <ul>
+    <li><b>Site estático em Nginx:</b> o MVP não tem back-end; o build do Vite gera
+    arquivos estáticos. Menos superfície de ataque e menos custo.</li>
+    <li><b>Nginx unprivileged:</b> o container roda como UID 101, não root.</li>
+    <li><b>Sem SSH:</b> a instância não tem key pair nem porta 22; o acesso é via SSM.</li>
+    <li><b>Elastic IP:</b> mantém a URL estável mesmo se a instância for substituída.</li>
+    <li><b>ECR imutável:</b> uma tag publicada não pode ser sobrescrita; o deploy usa
+    SHA do commit + tentativa do run.</li>
+    <li><b>State remoto:</b> S3 com lock nativo (<code>use_lockfile</code>), sem DynamoDB.</li>
+  </ul>
+</section>
+
+<section id="pipeline">
+  <h2><span class="num">4.</span>Pipeline DevSecOps</h2>
+  <pre><code>push na main
+  │
+  ├─ security ─┬─ Gitleaks (histórico completo, --redact, exit code 1)
+  │            └─ Semgrep  (p/default + p/secrets, SARIF como artefato)
+  │
+  ├─ infrastructure ── Terraform init/apply (state no S3)
+  │
+  └─ deploy ─── build → ECR → SSM → healthcheck → curl 200</code></pre>
+
+  <table>
+    <tr><th>Etapa</th><th>Ferramenta</th><th>O que faz</th><th>Bloqueia se</th></tr>
+    <tr><td>1</td><td>Gitleaks 8.28</td><td>Procura segredos no histórico do Git</td><td>Qualquer finding</td></tr>
+    <tr><td>2</td><td>Semgrep</td><td>SAST em Python, JS, Terraform, Dockerfile e workflows</td><td>Finding bloqueante</td></tr>
+    <tr><td>3</td><td>Terraform 1.10.5</td><td><code>fmt</code>, <code>validate</code> e <code>apply</code></td><td>Erro de sintaxe, plano ou apply</td></tr>
+    <tr><td>4</td><td>Docker</td><td>Build da imagem do site</td><td>Falha de build</td></tr>
+    <tr><td>5</td><td>Amazon ECR</td><td>Push da imagem com tag única</td><td>Falha de autenticação/push</td></tr>
+    <tr><td>6</td><td>AWS SSM</td><td>Pull, troca do container, healthcheck local</td><td>Comando remoto falha</td></tr>
+    <tr><td>7</td><td><code>curl</code></td><td><code>GET http://IP/</code> precisa retornar 200</td><td>Status ≠ 200</td></tr>
+  </table>
+
+  <div class="callout ok">
+    <strong>Gate real:</strong> o job <code>deploy</code> tem <code>needs: security</code>.
+    Se Gitleaks ou Semgrep falharem, o deploy nem começa. As actions são fixadas pelo
+    SHA completo do commit, não por tags móveis.
+  </div>
+
+  <h3>Pipeline de pull request</h3>
+  <p>O <code>pr.yml</code> roda em PRs para a <code>main</code>: segurança, build da imagem
+  e <code>terraform fmt -check</code> + <code>terraform validate</code> (sem apply). O
+  <code>destroy.yml</code> é manual e exige digitar <code>destroy</code>.</p>
+</section>
+
+<section id="seguranca" class="page-break">
+  <h2><span class="num">5.</span>Segurança</h2>
+
+  <h3>Gestão de segredos</h3>
+  <ul>
+    <li>A chave real do Roboflow fica apenas no <code>.env</code> local, que está no
+    <code>.gitignore</code> e no <code>.dockerignore</code>.</li>
+    <li>O <code>.env.example</code> tem somente o placeholder
+    <code>sua_chave_do_roboflow_aqui</code>, permitido no <code>.gitleaks.toml</code>.</li>
+    <li>O pipeline usa secrets do GitHub para as chaves AWS; nenhuma credencial é escrita
+    no repositório.</li>
+    <li>Se um segredo entrar no histórico, o Gitleaks falha. O procedimento é rotacionar a
+    chave e limpar o histórico — nunca desativar o gate.</li>
+  </ul>
+
+  <h3>Infraestrutura</h3>
+  <table>
+    <tr><th>Controle</th><th>Implementação</th></tr>
+    <tr><td>Superfície de rede</td><td>Security group só com 80/tcp de entrada; SSH ausente</td></tr>
+    <tr><td>Acesso administrativo</td><td>SSM Session Manager + IAM role</td></tr>
+    <tr><td>Metadata</td><td>IMDSv2 obrigatório (<code>http_tokens = "required"</code>, hop limit 1)</td></tr>
+    <tr><td>Disco</td><td>EBS gp3 criptografado</td></tr>
+    <tr><td>Registry</td><td>ECR com tags imutáveis e scan on push</td></tr>
+    <tr><td>Container</td><td>Nginx unprivileged (UID 101), healthcheck</td></tr>
+    <tr><td>IAM</td><td>Role da instância com SSM + ECR read + logs; sem access keys na instância</td></tr>
+    <tr><td>State</td><td>S3 versionado, criptografado, com bloqueio de acesso público</td></tr>
+  </table>
+
+  <div class="callout warn">
+    <strong>Exceção documentada no Semgrep:</strong> o log group usa a criptografia em
+    repouso padrão da AWS (<code>aws/logs</code>), habilitada sem custo. O Semgrep
+    recomenda uma CMK dedicada; neste MVP, a regra foi suprimida com
+    <code># nosemgrep</code> e a justificativa está no <code>terraform/observability.tf</code>.
+    Em produção, a evolução é criar uma <code>aws_kms_key</code> com política para o
+    serviço de logs.
+  </div>
+
+  <h3>Limitações de segurança da atividade</h3>
+  <ul>
+    <li>O usuário IAM do pipeline usa <code>PowerUserAccess</code> +
+    <code>IAMFullAccess</code> e access keys de longa duração. Em produção: OIDC + role de
+    menor privilégio.</li>
+    <li>O site é HTTP, sem domínio, WAF ou HTTPS. Evolução: CloudFront + ACM.</li>
+    <li>O ECR tem scan on push, mas o pipeline não bloqueia por findings do scan; os gates
+    obrigatórios são Gitleaks e Semgrep.</li>
+  </ul>
+</section>
+
+<section id="observabilidade" class="page-break">
+  <h2><span class="num">6.</span>Observabilidade</h2>
+
+  <h3>Logs</h3>
+  <p>O Nginx grava access logs em JSON no stdout:</p>
+  <pre><code>{"time":"2026-11-18T20:59:20+00:00","remote_addr":"172.21.0.1",
+ "request":"GET / HTTP/1.1","status":200,"bytes":1002,
+ "referer":"","user_agent":"curl/8.22.0"}</code></pre>
+  <p>O container usa o driver <code>awslogs</code> para enviar ao log group
+  <code>/travessia-web</code> (retenção de 14 dias). O formato JSON permite filtrar por
+  <code>status</code>, <code>request</code> e <code>remote_addr</code> no Logs Insights.</p>
+
+  <h3>Métrica e alarmes</h3>
+  <table>
+    <tr><th>Alarme</th><th>Métrica</th><th>Condição</th><th>Ação</th></tr>
+    <tr><td><code>travessia-http-5xx</code></td><td><code>Travessia/Web Http5xx</code> (metric filter)</td><td>Soma ≥ 1 em 5 min</td><td>SNS</td></tr>
+    <tr><td><code>travessia-cpu-high</code></td><td><code>AWS/EC2 CPUUtilization</code></td><td>Média &gt; 80% por 10 min</td><td>SNS</td></tr>
+    <tr><td><code>travessia-status-check</code></td><td><code>AWS/EC2 StatusCheckFailed</code></td><td>Máximo ≥ 1 por 5 min</td><td>SNS</td></tr>
+  </table>
+  <p>O metric filter usa o padrão <code>{ $.status &gt;= 500 }</code>; o alarme de 5xx tem
+  <code>treat_missing_data = notBreaching</code> e envia também o retorno a OK.</p>
+
+  <h3>Dashboard e alerta</h3>
+  <p>O dashboard <code>travessia-mvp</code> tem cinco widgets: CPU, erros 5xx, rede, Logs
+  Insights com os últimos erros e o estado dos três alarmes. O tópico SNS
+  <code>travessia-alerts</code> recebe as ações dos alarmes; a assinatura de e-mail precisa
+  ser confirmada no primeiro deploy.</p>
+</section>
+
+<section id="custos" class="page-break">
+  <h2><span class="num">7.</span>Custos</h2>
+  <p>Estimativa para <code>us-east-1</code>, preço on-demand, 730 h/mês, em novembro de
+  2026. Valores de referência; confirme na
+  <a href="https://calculator.aws/">calculadora da AWS</a>.</p>
+
+  <table>
+    <tr><th>Item</th><th class="num-col">Quantidade</th><th class="num-col">Preço unitário</th><th class="num-col">US$/mês</th></tr>
+    <tr><td>EC2 <code>t3.micro</code></td><td class="num-col">730 h</td><td class="num-col">US$ 0,0104/h</td><td class="num-col">7,59</td></tr>
+    <tr><td>EBS gp3</td><td class="num-col">20 GB</td><td class="num-col">US$ 0,08/GB-mês</td><td class="num-col">1,60</td></tr>
+    <tr><td>IPv4 público (EIP)</td><td class="num-col">730 h</td><td class="num-col">US$ 0,005/h</td><td class="num-col">3,65</td></tr>
+    <tr><td>ECR</td><td class="num-col">~0,1 GB + requests</td><td class="num-col">US$ 0,10/GB-mês</td><td class="num-col">0,02</td></tr>
+    <tr><td>CloudWatch Logs</td><td class="num-col">~0,5 GB</td><td class="num-col">US$ 0,50/GB ingestão</td><td class="num-col">0,10</td></tr>
+    <tr><td>S3 (state) + SNS</td><td class="num-col">&lt; 1 MB + e-mails</td><td class="num-col">—</td><td class="num-col">0,00</td></tr>
+    <tr><td><b>Total</b></td><td></td><td></td><td class="num-col"><b>≈ 12,96</b></td></tr>
+  </table>
+
+  <div class="callout">
+    <strong>Premissas:</strong> não considera Free Tier nem créditos promocionais; com eles,
+    o valor pode ser menor. O IPv4 público é cobrado por hora, mesmo com a instância
+    parada, e o EBS continua cobrando enquanto o volume existir. Para encerrar a cobrança,
+    rode o workflow <b>Destroy</b> e exclua o bucket de state.
+  </div>
+</section>
+
+<section id="evidencias" class="page-break">
+  <h2><span class="num">8.</span>Evidências</h2>
+  <p>Os prints abaixo devem ser salvos em <code>docs/prints/</code> com os nomes indicados.
+  O checklist detalhado está em <a href="https://github.com/SEU_USUARIO/SEU_REPO/blob/main/docs/EVIDENCIAS.md">EVIDENCIAS.md</a>.</p>
+
+  <figure class="shot">
+    <img src="prints/01-pipeline.png" alt="Pipeline completo verde" onload="this.nextElementSibling.style.display='none'" onerror="this.style.display='none'">
+    <div class="ph"><b>Print 01 — Pipeline completo</b>Salve em <code>docs/prints/01-pipeline.png</code></div>
+    <figcaption><b>Pipeline.</b> Run do workflow <i>Deploy</i> com os jobs <code>security</code>, <code>infrastructure</code> e <code>deploy</code> verdes, e o resumo com a URL do MVP.</figcaption>
+  </figure>
+
+  <figure class="shot">
+    <img src="prints/02-gitleaks.png" alt="Gitleaks sem segredos" onload="this.nextElementSibling.style.display='none'" onerror="this.style.display='none'">
+    <div class="ph"><b>Print 02 — Gitleaks</b>Salve em <code>docs/prints/02-gitleaks.png</code></div>
+    <figcaption><b>Gitleaks.</b> Step <i>Procurar segredos no histórico</i> com saída de sucesso e a flag <code>--redact</code>.</figcaption>
+  </figure>
+
+  <figure class="shot">
+    <img src="prints/03-semgrep.png" alt="Semgrep sem findings" onload="this.nextElementSibling.style.display='none'" onerror="this.style.display='none'">
+    <div class="ph"><b>Print 03 — Semgrep</b>Salve em <code>docs/prints/03-semgrep.png</code></div>
+    <figcaption><b>Semgrep.</b> Resumo com <code>Findings: 0 (0 blocking)</code> e o artefato <code>semgrep-sarif</code>.</figcaption>
+  </figure>
+
+  <figure class="shot">
+    <img src="prints/04-terraform.png" alt="Terraform apply" onload="this.nextElementSibling.style.display='none'" onerror="this.style.display='none'">
+    <div class="ph"><b>Print 04 — Terraform</b>Salve em <code>docs/prints/04-terraform.png</code></div>
+    <figcaption><b>Terraform.</b> <code>Apply complete! Resources: N added</code> e os outputs da infraestrutura.</figcaption>
+  </figure>
+
+  <figure class="shot">
+    <img src="prints/05-site.png" alt="Site público do Travessia" onload="this.nextElementSibling.style.display='none'" onerror="this.style.display='none'">
+    <div class="ph"><b>Print 05 — Site público</b>Salve em <code>docs/prints/05-site.png</code></div>
+    <figcaption><b>MVP no ar.</b> Navegador em <code>http://IP_PUBLICO</code>, com a URL visível e o vídeo/detecções em execução.</figcaption>
+  </figure>
+
+  <figure class="shot">
+    <img src="prints/06-dashboard.png" alt="Dashboard do CloudWatch" onload="this.nextElementSibling.style.display='none'" onerror="this.style.display='none'">
+    <div class="ph"><b>Print 06 — Dashboard</b>Salve em <code>docs/prints/06-dashboard.png</code></div>
+    <figcaption><b>Dashboard.</b> CloudWatch <code>travessia-mvp</code> com CPU, 5xx, rede, Logs Insights e alarmes.</figcaption>
+  </figure>
+
+  <figure class="shot">
+    <img src="prints/07-alarme.png" alt="Alerta por e-mail do SNS" onload="this.nextElementSibling.style.display='none'" onerror="this.style.display='none'">
+    <div class="ph"><b>Print 07 — Alerta</b>Salve em <code>docs/prints/07-alarme.png</code></div>
+    <figcaption><b>Alerta.</b> E-mail do SNS e/ou alarme em estado <code>ALARM</code>, com o nome do alarme visível.</figcaption>
+  </figure>
+
+  <figure class="shot">
+    <img src="prints/08-logs.png" alt="Logs JSON no CloudWatch" onload="this.nextElementSibling.style.display='none'" onerror="this.style.display='none'">
+    <div class="ph"><b>Print 08 — Logs</b>Salve em <code>docs/prints/08-logs.png</code></div>
+    <figcaption><b>Logs.</b> Consulta no Logs Insights mostrando as linhas JSON e o campo <code>status</code>.</figcaption>
+  </figure>
+
+  <figure class="shot">
+    <img src="prints/09-ecr.png" alt="Imagem no ECR" onload="this.nextElementSibling.style.display='none'" onerror="this.style.display='none'">
+    <div class="ph"><b>Print 09 — ECR</b>Salve em <code>docs/prints/09-ecr.png</code></div>
+    <figcaption><b>Registry.</b> Repositório <code>travessia-web</code> com a tag <code>SHA-RUN_ATTEMPT</code> e o resultado do scan.</figcaption>
+  </figure>
+
+  <figure class="shot">
+    <img src="prints/10-custos.png" alt="Estimativa de custos" onload="this.nextElementSibling.style.display='none'" onerror="this.style.display='none'">
+    <div class="ph"><b>Print 10 — Custos</b>Salve em <code>docs/prints/10-custos.png</code></div>
+    <figcaption><b>Custos.</b> Cost Explorer ou a tabela de custos deste relatório, com a estimativa de ≈ US$ 13/mês.</figcaption>
+  </figure>
+</section>
+
+<section id="reproduzir" class="page-break">
+  <h2><span class="num">9.</span>Como reproduzir</h2>
+  <ol>
+    <li>Crie o repositório público e envie o código (sem o <code>.env</code>).</li>
+    <li>Crie o usuário IAM <code>travessia-ci</code> com <code>PowerUserAccess</code> +
+    <code>IAMFullAccess</code>.</li>
+    <li>Configure os secrets <code>AWS_ACCESS_KEY_ID</code> e
+    <code>AWS_SECRET_ACCESS_KEY</code> e as variables <code>AWS_REGION</code> e
+    <code>ALERT_EMAIL</code>.</li>
+    <li>Rode o workflow <b>Deploy</b>.</li>
+    <li>Confirme a assinatura do SNS e abra a URL do resumo.</li>
+    <li>Para destruir: <b>Destroy</b> → digite <code>destroy</code>.</li>
+  </ol>
+  <p>O passo a passo completo, incluindo IAM, secrets e troubleshooting, está no
+  <a href="https://github.com/SEU_USUARIO/SEU_REPO/blob/main/DEPLOY.md">DEPLOY.md</a>.</p>
+</section>
+
+<section id="limitacoes">
+  <h2><span class="num">10.</span>Limitações e evoluções</h2>
+  <table>
+    <tr><th>Limitação</th><th>Evolução sugerida</th></tr>
+    <tr><td>HTTP sem domínio/HTTPS</td><td>CloudFront + ACM, ou Caddy com Let's Encrypt</td></tr>
+    <tr><td>Uma instância em uma AZ</td><td>ALB + Auto Scaling + multi-AZ</td></tr>
+    <tr><td>IAM com políticas amplas e access keys</td><td>OIDC + role de menor privilégio</td></tr>
+    <tr><td>Sem WAF</td><td>AWS WAF na distribuição</td></tr>
+    <tr><td>ECR scan não bloqueia</td><td>Gate com Inspector/ECR scan no pipeline</td></tr>
+    <tr><td>Sem backup</td><td>AWS Backup ou snapshot automatizado do EBS</td></tr>
+    <tr><td>Log group com chave gerenciada</td><td>CMK dedicada no KMS</td></tr>
+    <tr><td>Custo fixo de IPv4/EBS</td><td>Desligar/destruir fora das demonstrações</td></tr>
+  </table>
+</section>
+
+<section id="conclusao">
+  <h2><span class="num">11.</span>Conclusão</h2>
+  <p>O MVP atende aos entregáveis do <b>Deploy Blindado</b>: repositório público com
+  <code>Dockerfile</code>, workflow e Terraform; URL pública na AWS; pipeline de ponta a
+  ponta com build, Gitleaks, Semgrep, Terraform, deploy automático via SSM e verificação
+  HTTP; observabilidade com logs JSON, dashboard, alarmes e alerta por e-mail; Ficha
+  Técnica no <code>README.md</code> e este relatório com arquitetura, evidências e custo.</p>
+  <p>O resultado é reproduzível: qualquer pessoa com acesso ao repositório e às credenciais
+  recria a infraestrutura e publica o MVP sem um deploy manual.</p>
+</section>
+
+<section id="referencias">
+  <h2><span class="num">12.</span>Referências</h2>
+  <ul>
+    <li><a href="https://github.com/SEU_USUARIO/SEU_REPO">Repositório do projeto</a></li>
+    <li><a href="https://github.com/SEU_USUARIO/SEU_REPO/blob/main/DEPLOY.md">Guia de deploy</a></li>
+    <li><a href="https://github.com/SEU_USUARIO/SEU_REPO/blob/main/docs/EVIDENCIAS.md">Checklist de evidências</a></li>
+    <li><a href="https://registry.terraform.io/providers/hashicorp/aws/latest/docs">Terraform AWS Provider</a></li>
+    <li><a href="https://docs.github.com/actions/using-workflows/reusing-workflows">GitHub Actions — reusable workflows</a></li>
+    <li><a href="https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.html">CloudWatch Logs — metric filters</a></li>
+    <li><a href="https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html">AWS Systems Manager — Session Manager</a></li>
+  </ul>
+</section>
+
+<footer class="footer">
+  <p><b>Travessia</b> — CitizenTech / FIAP Global Solution 2026.2 · Secure DevOps Tools
+  &amp; Cloud Computing · Deploy Blindado.</p>
+  <p>Relatório gerado em 18/11/2026. Substitua os placeholders e os prints antes de
+  exportar o PDF final.</p>
+</footer>
+
+</body>
+</html>

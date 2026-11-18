@@ -1,0 +1,10 @@
+title = "Travessia - Gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Somente o placeholder do arquivo de exemplo"
+regexes = [
+  '''sua_chave_do_roboflow_aqui''',
+]

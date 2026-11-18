@@ -1,0 +1,24 @@
+# Núcleo em Python: vídeo do YouTube -> Roboflow -> mensagens no terminal.
+# Feito para rodar em servidor sem tela (headless), sem as janelas do OpenCV.
+FROM python:3.13-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    HEADLESS=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Bibliotecas de sistema exigidas pelo opencv-python (dependência do inference-sdk)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libxcb1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY main.py ./
+COPY utility/ ./utility/
+
+RUN mkdir -p /app/deteccoes
+
+CMD ["python", "main.py"]

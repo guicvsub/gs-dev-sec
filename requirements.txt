@@ -1,0 +1,4 @@
+inference-sdk
+yt-dlp
+opencv-python
+python-dotenv

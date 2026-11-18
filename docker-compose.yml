@@ -1,0 +1,32 @@
+services:
+  # Site de apresentação (React compilado, servido pelo Nginx).
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: travessia-web
+    ports:
+      - "${WEB_PORT:-80}:8080"
+    restart: unless-stopped
+
+  # Analisador em Python (opcional; gasta créditos do Roboflow e é só terminal).
+  # Suba com: docker compose --profile core up -d --build
+  core:
+    build:
+      context: .
+      dockerfile: Dockerfile.core
+    container_name: travessia-core
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      HEADLESS: "1"
+      REPETIR_VIDEO: "${REPETIR_VIDEO:-1}"
+      SALVAR_DETECCOES: "${SALVAR_DETECCOES:-0}"
+      CONFIANCA_MIN: "${CONFIANCA_MIN:-0.50}"
+      INTERVALO_ANALISE: "${INTERVALO_ANALISE:-0.5}"
+    volumes:
+      - ./deteccoes:/app/deteccoes
+    restart: on-failure:5
+    profiles:
+      - core

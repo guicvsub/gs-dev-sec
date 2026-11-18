@@ -1,0 +1,8 @@
+# Copie para backend.hcl e preencha com os dados da sua conta.
+# O bucket precisa existir antes do `terraform init`.
+#   aws s3 mb "s3://travessia-tfstate-SUA_CONTA" --region us-east-1
+#   terraform init -backend-config=backend.hcl
+bucket  = "travessia-tfstate-SUA_CONTA"
+key     = "travessia/terraform.tfstate"
+region  = "us-east-1"
+encrypt = true
