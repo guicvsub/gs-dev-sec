@@ -84,7 +84,7 @@ gh run view <run-id> --log
 
 ## 5. Site público — `05-site.png`
 
-**Onde:** navegador em `http://IP_PUBLICO`.
+**Onde:** navegador em `http://4.168.236.152`.
 
 **O que mostrar:**
 

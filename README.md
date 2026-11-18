@@ -3,8 +3,8 @@
 > MVP da **Global Solution FIAP 2026.2 — CitizenTech**, preparado para a atividade
 > **Deploy Blindado**: container, Terraform, pipeline DevSecOps e observabilidade na AWS.
 
-**URL pública:** _preencher após o primeiro deploy_ (`http://IP_PUBLICO`)
-**Repositório:** _preencher com a URL do GitHub_
+**URL pública:** <http://4.168.236.152/>
+**Repositório público:** <https://github.com/guicvsub/gs-dev-sec>
 **Pipeline:** [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
 **Relatório:** [`docs/RELATORIO.md`](docs/RELATORIO.md) • **Evidências:** [`docs/EVIDENCIAS.md`](docs/EVIDENCIAS.md) • **Guia de deploy:** [`DEPLOY.md`](DEPLOY.md)
 
@@ -30,7 +30,7 @@
 | **Segurança** | Gitleaks e Semgrep bloqueando o deploy; ECR com tags imutáveis e scan on push; IMDSv2; security group só com HTTP 80; **sem SSH** (acesso via SSM); EBS criptografado; actions fixadas por SHA. |
 | **Observabilidade** | Logs JSON do Nginx no CloudWatch, dashboard `travessia-mvp`, alarmes de 5xx/CPU/status e alerta por e-mail via SNS. |
 | **Custo estimado** | ≈ **US$ 13/mês** em `us-east-1` on-demand (EC2 + EBS + IPv4 público + serviços gerenciados). |
-| **Status** | _[preencher: no ar em `http://...` / aguardando deploy]_ |
+| **Status** | **No ar** em <http://4.168.236.152/> (VPS Azure, Ubuntu 24.04, Docker + Nginx) |
 
 ---
 

@@ -15,9 +15,9 @@
 | --- | --- |
 | **Equipe** | `[PREENCHER: nome da equipe]` |
 | **Integrantes** | `[PREENCHER: Nome — RM]`, `[PREENCHER]`, `[PREENCHER]` |
-| **Repositório público** | <https://github.com/SEU_USUARIO/SEU_REPO> |
-| **MVP no ar** | <http://IP_PUBLICO> |
-| **Pipeline** | <https://github.com/SEU_USUARIO/SEU_REPO/actions/workflows/deploy.yml> |
+| **Repositório público** | <https://github.com/guicvsub/gs-dev-sec> |
+| **MVP no ar** | <http://4.168.236.152> |
+| **Pipeline** | <https://github.com/guicvsub/gs-dev-sec/actions/workflows/deploy.yml> |
 | **Dashboard** | `[PREENCHER: link do dashboard, disponível no resumo do deploy]` |
 | **Data** | 18 de novembro de 2026 |
 
@@ -345,7 +345,7 @@ deploy manual.
 
 ## Referências
 
-- [Repositório do projeto](https://github.com/SEU_USUARIO/SEU_REPO)
+- [Repositório do projeto](https://github.com/guicvsub/gs-dev-sec)
 - [Guia de deploy](../DEPLOY.md)
 - [Checklist de evidências](EVIDENCIAS.md)
 - [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
