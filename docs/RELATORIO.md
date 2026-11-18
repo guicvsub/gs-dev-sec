@@ -218,7 +218,7 @@ O Nginx grava access logs em JSON no stdout:
 {"time":"2026-11-18T20:59:20+00:00","remote_addr":"172.21.0.1","request":"GET / HTTP/1.1","status":200,"bytes":1002,"referer":"","user_agent":"curl/8.22.0"}
 ```
 
-O container usa o driver `awslogs` para enviar ao log group `/travessia-web`
+O container usa o driver `awslogs` para enviar ao log group `travessia-web`
 (retenção de 14 dias). O formato JSON permite filtrar por `status`, `request` e
 `remote_addr` no Logs Insights.
 

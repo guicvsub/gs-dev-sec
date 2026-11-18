@@ -18,9 +18,10 @@ jobs:
 
       - name: Procurar segredos no histórico
         run: |
+          # Imagem fixada por digest (Gitleaks 8.28.0), a mesma usada nos testes locais.
           docker run --rm \
             -v "$PWD:/repo" \
-            ghcr.io/gitleaks/gitleaks:v8.28.0 \
+            ghcr.io/gitleaks/gitleaks@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854 \
             detect --source /repo \
               --config /repo/.gitleaks.toml \
               --verbose --redact --exit-code 1
@@ -34,10 +35,11 @@ jobs:
 
       - name: Analisar o código
         run: |
+          # Imagem fixada por digest para evitar que uma tag móvel mude o scanner.
           docker run --rm \
             -v "$PWD:/src" \
             -w /src \
-            semgrep/semgrep:latest \
+            semgrep/semgrep@sha256:67518c174185a2043fdbed16c70631b79209499b3671178e7194379b48295a0d \
             semgrep scan \
               --config p/default \
               --config p/secrets \

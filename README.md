@@ -155,7 +155,7 @@ atividade (mantendo o bucket de state).
 ## Observabilidade
 
 - **Logs:** o Nginx grava access logs em JSON no stdout; o Docker usa o driver `awslogs`
-  para enviar ao log group `/travessia-web` (retenção de 14 dias).
+  para enviar ao log group `travessia-web` (retenção de 14 dias).
 - **Métrica:** o metric filter `Http5xx` conta respostas com `status >= 500` no namespace
   `Travessia/Web`.
 - **Dashboard:** `travessia-mvp`, com CPU, rede, erros 5xx, Logs Insights e estado dos

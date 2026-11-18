@@ -196,7 +196,7 @@ Para testar o caminho completo do alerta (opcional, mas ótimo para a evidência
 | --- | --- |
 | URL do MVP | Resumo do job `deploy` ou EC2 → Instances → `travessia-web` → Public IPv4 |
 | Dashboard | CloudWatch → Dashboards → `travessia-mvp` (link no resumo) |
-| Logs | CloudWatch → Log groups → `/travessia-web` |
+| Logs | CloudWatch → Log groups → `travessia-web` |
 | Alarmes | CloudWatch → All alarms → `travessia-http-5xx`, `travessia-cpu-high`, `travessia-status-check` |
 | Imagem | ECR → Repositories → `travessia-web` |
 | State | S3 → `travessia-tfstate-<account-id>` |

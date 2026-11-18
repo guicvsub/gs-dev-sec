@@ -148,7 +148,7 @@ aws cloudwatch set-alarm-state \
 
 ## 8. Logs — `08-logs.png`
 
-**Onde:** CloudWatch → Log groups → `/travessia-web` → Logs Insights.
+**Onde:** CloudWatch → Log groups → `travessia-web` → Logs Insights.
 
 **Consulta sugerida:**
 
