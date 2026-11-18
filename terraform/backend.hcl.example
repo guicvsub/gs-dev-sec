@@ -1,0 +1,10 @@
+# Exemplo de backend remoto (FORA do repo).
+# Copie para backend.hcl (que está no .gitignore) e rode:
+#   terraform init -backend-config=backend.hcl
+#
+# Se o provedor não tiver backend gerenciado, use o local (estado no disco,
+# também fora do git). O arquivo terraform.tfstate está no .gitignore.
+
+# backend "local" {
+#   path = "terraform.tfstate"
+# }

@@ -33,10 +33,11 @@ simples em tela, voz e vibração.
 Para o deploy seguro, o MVP foi empacotado em uma imagem Docker e publicado em uma **VPS
 própria** (AIS, Ubuntu 24.04):
 
-- **Segurança:** Gitleaks (segredos) e Semgrep (SAST) bloqueiam o pipeline.
+- **Segurança:** Gitleaks (segredos), Semgrep (SAST) e **Trivy** (vulnerabilidades) bloqueiam o pipeline.
+- **IaC:** a VPS é provisionada por **Terraform (OpenStack)**; state e `.tfvars` ficam fora do repo; a porta admin nunca abre para `0.0.0.0/0`.
 - **Container:** o build do Vite gera os estáticos do site e o Nginx (não-root) os serve.
-- **Deploy:** Docker Compose na VPS publica o container na porta 80.
-- **Observabilidade:** logs JSON do Nginx no stdout do container.
+- **Deploy:** automático via **SSH** (GitHub Actions) com Docker Compose na porta 80.
+- **Observabilidade:** **Prometheus + Grafana** locais com as **4 métricas de ouro** e alerta disparado.
 
 O site público é a parte demonstrável do MVP: ele reproduz um vídeo de São Paulo com as
 detecções precomputadas, sem depender de chave do Roboflow. O núcleo Python que chama o
@@ -86,21 +87,22 @@ mudar apenas a fonte da imagem; a análise e as regras permanecem.
 
 | Camada | Serviço | Configuração |
 | --- | --- | --- |
+| IaC | Terraform (OpenStack) | Instância, floating IP, security group (só 80 pública) |
 | Aplicação | Container Docker `web` | Site em React servido pelo Nginx na 8080 |
 | Servidor | VPS AIS (Ubuntu 24.04) | Docker + Docker Compose; IP público fixo |
 | Proxy/Web | Nginx unprivileged | Porta 80 externa → 8080 interna |
-| CI/CD | GitHub Actions | Gitleaks, Semgrep e build da imagem |
-| Observabilidade | Logs JSON no stdout | Consulta com `docker compose logs web` |
+| CI/CD | GitHub Actions | Gitleaks, Semgrep, Trivy, build e deploy SSH |
+| Observabilidade | Prometheus + Grafana (locais) | 4 métricas de ouro + alerta |
 
 ### Decisões de arquitetura
 
 1. **Site estático em Nginx:** o MVP não tem back-end; o build do Vite gera arquivos
    estáticos e o Nginx os serve. Isso reduz a superfície de ataque.
 2. **Nginx unprivileged:** o container roda como UID 101 (nginx), não root.
-3. **VPS dedicada:** custo fixo e simples, sem gerenciamento de nuvem; o IP público é
-   estável.
-4. **Docker Compose:** versões e serviços declarados em arquivo; fácil de reproduzir e
-   atualizar.
+3. **VPS dedicada (IaC):** provisionada por Terraform; IP público estável, custo fixo e
+   administração simples.
+4. **Porta admin restrita:** o security group só expõe a porta 80 ao público; o
+   SSH/admin usa um CIDR específico (`admin_ssh_cidr`), nunca `0.0.0.0/0`.
 
 ---
 
@@ -113,34 +115,35 @@ todo push na `main` e por `workflow_dispatch`.
 push na main
   │
   ├─ security ─┬─ Gitleaks (histórico completo, --redact, exit code 1)
-  │            └─ Semgrep  (p/default + p/secrets, SARIF como artefato)
+  │            ├─ Semgrep  (p/default + p/secrets, SARIF como artefato)
+  │            └─ Trivy    (imagem: CRITICAL/HIGH bloqueia, SARIF)
   │
-  └─ build ──── docker build da imagem do site
+  ├─ build ──── docker build da imagem do site
+  │
+  └─ deploy ── SSH → VPS → docker compose up -d --build web → curl 200
 ```
 
 | Etapa | Ferramenta | O que faz | Critério de bloqueio |
 | --- | --- | --- | --- |
 | 1 | Gitleaks 8.28 | Procura segredos no histórico do Git | Qualquer finding |
 | 2 | Semgrep | SAST em Python, JS, Dockerfile e workflows | Finding bloqueante |
-| 3 | Docker | Build da imagem do site | Falha de build |
+| 3 | Trivy | Scan de vulnerabilidades na imagem | CRITICAL/HIGH (não fixadas) |
+| 4 | Docker | Build da imagem do site | Falha de build |
+| 5 | SSH (deploy) | `git pull` + `docker compose up` na VPS | Comando remoto falha |
+| 6 | `curl` | `GET http://IP/` precisa retornar 200 | Status ≠ 200 |
 
 **Controles de segurança do pipeline:**
 
-- O job `build` tem `needs: security`; se Gitleaks ou Semgrep falharem, ele não roda.
+- O job `build` tem `needs: security`; o `deploy` tem `needs: build`. Se Gitleaks, Semgrep
+  ou Trivy falharem, nada é publicado.
 - As actions são fixadas pelo **SHA completo** do commit (não por tags móveis).
-- O Gitleaks usa `--redact` para não imprimir o segredo no log.
-- O Semgrep publica o SARIF como artefato para auditoria.
+- Segredos (chave SSH, usuário) estão em **GitHub Secrets**.
+- O deploy é **automático** a cada push na `main` e por `workflow_dispatch`.
 
 ### Pipeline de pull request
 
 O [`pr.yml`](../.github/workflows/pr.yml) roda em PRs para a `main`: segurança e build da
-imagem. Isso impede que uma mudança quebre o build antes do merge.
-
-### Deploy na VPS
-
-O pipeline valida e constrói a imagem. A publicação na VPS é feita com Docker Compose
-(veja o [`DEPLOY.md`](../DEPLOY.md)); o script `scripts/deploy-vps.sh` faz o
-`git pull` + `docker compose up -d --build web`.
+imagem.
 
 ---
 
@@ -148,59 +151,70 @@ O pipeline valida e constrói a imagem. A publicação na VPS é feita com Docke
 
 ### 6.1 Gestão de segredos
 
-- A chave real do Roboflow fica apenas no `.env` local, que está no `.gitignore` e no
-  `.dockerignore`.
-- O `.env.example` contém somente o placeholder `sua_chave_do_roboflow_aqui`, permitido
-  explicitamente no `.gitleaks.toml`.
-- Se um segredo entrar no histórico, o Gitleaks falha. O procedimento é rotacionar a
-  chave e limpar o histórico, nunca desativar o gate.
+- A chave real do Roboflow fica apenas no `.env` local, que está no `.gitignore`.
+- A chave SSH (`VPS_SSH_KEY`) e o usuário (`VPS_USER`) da VPS ficam em **GitHub Secrets**.
+- O `.env.example` contém somente o placeholder `sua_chave_do_roboflow_aqui`.
+- Se um segredo entrar no histórico, o Gitleaks falha; o procedimento é rotacionar a
+  chave e limpar o histórico.
 
 ### 6.2 Infraestrutura
 
 | Controle | Implementação |
 | --- | --- |
-| Superfície de rede | Container expõe só a porta 80; acesso via Docker |
-| Servidor | VPS dedicada com `.env` fora do repositório |
+| Porta admin | SSH restrito a `admin_ssh_cidr`; **nunca `0.0.0.0/0`** |
+| Superfície de rede | Security group só expõe a porta 80 ao público |
+| Estado/IaC | State e `.tfvars` do Terraform **fora do repositório** |
 | Container | Nginx unprivileged (UID 101) |
-| Registry/entrega | Imagem construída na VPS com `--build` |
-| CI/CD | Actions fixadas por SHA; Gitleaks + Semgrep como gate |
+| CI/CD | Gitleaks + Semgrep + Trivy; actions fixadas por SHA |
 
-### 6.3 Limitações de segurança da atividade
+### 6.3 Limitações e evoluções de segurança
 
-- O site é HTTP, sem domínio, WAF ou HTTPS. A evolução é um proxy TLS (Caddy com Let's
-  Encrypt, por exemplo).
-- O deploy na VPS é manual (Docker Compose). Uma evolução é automatizar com SSH na
-  pipeline.
+- O site é HTTP, sem domínio/HTTPS — evolução: proxy TLS (Caddy/Let's Encrypt).
+- O `probe` do `/stub_status` expõe poucas métricas read-only (aceitável). Em produção
+  alto tráfego, restringir por IP de monitoramento.
 
 ---
 
-## 7. Observabilidade
+## 7. Observabilidade (Prometheus + Grafana)
 
-### 7.1 Logs
+As **4 métricas de ouro** do MVP são exibidas em Grafana local via Prometheus (a rubrica
+permite Prometheus/Grafana locais apontando para o MVP publicado).
 
-O Nginx grava access logs em JSON no stdout:
+### 7.1 Métricas
 
-```json
-{"time":"2026-11-18T20:59:20+00:00","remote_addr":"172.21.0.1","request":"GET / HTTP/1.1","status":200,"bytes":1002,"referer":"","user_agent":"curl/8.22.0"}
-```
+| Métrica de ouro | Métrica | Fonte |
+| --- | --- | --- |
+| Latência | `probe_duration_seconds` | blackbox-exporter |
+| Tráfego | `rate(nginx_http_requests_total[5m])` | nginx-prometheus-exporter |
+| Erros/Disponibilidade | `probe_success` | blackbox-exporter |
+| Saturação | `nginx_connections_active` | nginx-prometheus-exporter |
 
-Consulte com:
+Stack em `docker-compose.observability.yml` (Prometheus, Grafana, blackbox,
+nginx-exporter). Dashboard **"Travessia - 4 Métricas de Ouro"** provisionado.
 
-```bash
-docker compose logs web
-```
+### 7.2 Alertas
 
-O formato JSON permite filtrar por `status`, `request`, `remote_addr` e `user_agent`.
+`monitoring/alerts.yml` define:
+
+- **MVPDown** (CRITICAL): `probe_success == 0` por 1 min — MVP fora do ar.
+- **MVPHighLatency** (WARNING): latência > 3 s por 2 min.
+
+Para evidenciar o "alerta disparado", simule uma falha e capture o alerta no Prometheus.
 
 ---
 
 ## 8. Custos
 
-O custo desta solução é o **valor fixo da VPS** (sem os custos de serviços gerenciados de
-nuvem). Para o MVP, uma VPS pequena é suficiente; o preço varia conforme o provedor
-(nosso caso, a AIS).
+O custo é o **valor fixo da VPS AIS** (sem serviços gerenciados de nuvem):
 
-Para o núcleo Python opcional, o custo é apenas o consumo de créditos do Roboflow.
+| Item | Estimativa/mês |
+| --- | --- |
+| VPS AIS (1–2 vCPU, 2–4 GB RAM) | **R$ 40–80** |
+| IP público (floating), se cobrado | R$ 0–10 |
+| Tráfego de saída (baixa demanda) | ~R$ 0–5 |
+| **Total estimado** | **≈ R$ 45–95/mês** |
+
+O núcleo Python opcional consome créditos do Roboflow à parte.
 
 ---
 
@@ -211,36 +225,51 @@ Salve os prints em `docs/prints/` com os nomes abaixo. O checklist detalhado est
 
 | # | Arquivo | O que deve mostrar |
 | --- | --- | --- |
-| 1 | `01-pipeline.png` | Run do workflow `Deploy` com os jobs `security` e `build` verdes. |
+| 1 | `01-pipeline.png` | Run do workflow `Deploy` com os jobs `security`, `build` e `deploy` verdes. |
 | 2 | `02-gitleaks.png` | Step do Gitleaks sem findings (ou o log do gate). |
 | 3 | `03-semgrep.png` | Step do Semgrep com `0 findings` / artefato SARIF. |
-| 4 | `04-build.png` | Step do build da imagem com sucesso. |
+| 4 | `04-trivy.png` | Step do Trivy com `Total: 0` (ou baixo) / artefato SARIF. |
 | 5 | `05-site.png` | Site público no navegador, com a URL visível. |
-| 6 | `06-logs.png` | Saída de `docker compose logs web` com o JSON. |
-| 7 | `07-vps.png` | Container `web` em execução na VPS (`docker compose ps`). |
-| 8 | `08-repo.png` | Repositório público no GitHub. |
+| 6 | `06-dashboard.png` | Dashboard Grafana com as 4 métricas de ouro. |
+| 7 | `07-alerta.png` | Alerta disparado (`MVPDown`/`MVPHighLatency`) no Prometheus/Grafana. |
+| 8 | `08-iac.png` | `terraform apply` (ou plan) mostrando a criação da VPS/security group. |
+| 9 | `09-barrada.png` | Execução barrada do pipeline (Gitleaks/Semgrep/Trivy falhando). |
+| 10 | `10-corrigida.png` | Execução corrigida passando de verde. |
 
 ---
 
-## 10. Como reproduzir
+## 10. Dados pessoais e LGPD
 
-1. Crie o repositório público e envie o código (sem o `.env`).
-2. Na VPS, instale Docker e Docker Compose.
-3. Clone o projeto na VPS e suba com `docker compose up -d --build web`.
-4. Confirme com `curl -I http://IP_DA_VPS`.
+O MVP reproduz um **vídeo público de uma rua de São Paulo**, que pode conter **pessoas
+visíveis e placas de veículos**. Tratamento:
+
+| Dado | Onde fica | Observação |
+| --- | --- | --- |
+| Imagens/vídeo (pessoas) | Vídeo público do YouTube | Não é coletado nem armazenado pela app. |
+| Detecções pré-computadas | `frontend/public/dados/deteccoes-video.json` | Apenas bounding boxes e classes, **sem rostos reconhecíveis**. |
+| Dados do usuário final | Nenhum | O site **não coleta** nome, e-mail, localização nem qualquer dado pessoal. |
+
+**Responsabilidade compartilhada (modelo provedor/cliente):**
+
+- **Provedor (AIS):** segurança física e da infraestrutura, disponibilidade de rede e do
+  datacenter.
+- **Cliente (equipe):** a aplicação, o container, as credenciais/secrets, os dados
+  processados, as configurações de segurança e o cumprimento da **LGPD** sobre os dados.
+- A aplicação é stateless e **não persiste dados pessoais**, minimizando risco à
+  privacidade.
+
+---
+
+## 11. Como reproduzir
+
+1. Crie o repositório público e envie o código (sem o `.env` e sem `.tfvars`).
+2. **Provisione a VPS com Terraform** (OpenStack): `terraform apply`.
+3. Configure os secrets/variables (chave SSH, usuário, host).
+4. Faça push na `main`: pipeline roda Gitleaks + Semgrep + Trivy e faz **deploy automático
+   via SSH**.
+5. Suba o Prometheus + Grafana locais e confirme as 4 métricas e o alerta.
 
 O passo a passo completo está em [`../DEPLOY.md`](../DEPLOY.md).
-
----
-
-## 11. Limitações e próximos passos
-
-| Limitação | Evolução sugerida |
-| --- | --- |
-| HTTP sem domínio/HTTPS | Caddy com Let's Encrypt, ou Cloudflare |
-| Deploy manual na VPS | Integrar deploy à pipeline com SSH |
-| Sem snapshot/backup | Snapshot periódico da VPS |
-| Uma única instância | Replicar o container em múltiplas VPS atrás de um proxy |
 
 ---
 
@@ -248,15 +277,18 @@ O passo a passo completo está em [`../DEPLOY.md`](../DEPLOY.md).
 
 O MVP atende aos entregáveis:
 
-- **Repositório público** com `Dockerfile`, workflows e `docker-compose.yml`.
-- **URL pública** do MVP na VPS.
-- **Pipeline DevSecOps**: build, Gitleaks e Semgrep.
-- **Observabilidade** com logs JSON consultáveis.
-- **Ficha Técnica** no `README.md` e **relatório com arquitetura e evidências** neste
-  documento/PDF.
+- **Container e IaC:** Dockerfile enxuto/não-root, Docker Compose e **VPS provisionada por
+  Terraform** (state e `.tfvars` fora do repo; porta admin nunca `0.0.0.0/0`).
+- **Observabilidade:** **Prometheus + Grafana locais** com as **4 métricas de ouro** e
+  **alerta disparado**.
+- **Pipeline DevSecOps:** GitHub Actions com build, Gitleaks, Semgrep e **Trivy** a cada
+  push, secrets em GitHub Secrets e **deploy automático via SSH**, com execução barrada e
+  corrigida evidenciadas.
+- **Documentação:** diagrama, responsabilidade compartilhada, LGPD, custo e README
+  reproduzível.
 
-O resultado é um MVP no ar de forma simples e reproduzível, com segurança reforçada na
-pipeline e custo previsível de uma VPS dedicada.
+O resultado é um MVP no ar de forma reproduzível, seguro na pipeline e com observabilidade
+completa — com custo previsível de uma VPS dedicada.
 
 ---
 

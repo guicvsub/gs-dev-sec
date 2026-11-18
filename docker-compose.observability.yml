@@ -1,0 +1,67 @@
+# Observabilidade do MVP - Prometheus + Grafana (locais)
+#
+# Rodam localmente na sua máquina apontando para o MVP publicado
+# (Prometheus e Grafana NÃO precisam subir na VPS). A rubrica permite
+# Prometheus + Grafana locais.
+#
+# Uso:  docker compose -f docker-compose.observability.yml up -d
+#       Prometheus: http://localhost:9090
+#       Grafana:    http://localhost:3000  (admin / admin, depois troque)
+
+services:
+  # Coleta as métricas do Nginx do MVP publicado (conexões/requests).
+  # O site roda na VPS; o endpoint /stub_status é servido pelo próprio MVP.
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.0.0
+    container_name: travessia-nginx-exporter
+    environment:
+      SCRAPE_URI: "http://4.168.236.152/stub_status"
+    command:
+      - --nginx.scrape-uri=http://4.168.236.152/stub_status
+    ports:
+      - "9113:9113"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: travessia-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  # Sonda (blackbox) que mede disponibilidade e latência do MVP publicado.
+  blackbox:
+    image: prom/blackbox-exporter:v0.24.0
+    container_name: travessia-blackbox
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    volumes:
+      - ./monitoring/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    ports:
+      - "9115:9115"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: travessia-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:

@@ -1,0 +1,32 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - alerts.yml
+
+scrape_configs:
+  # Métricas do Nginx do MVP publicado (via exporter local).
+  - job_name: "nginx_mvp"
+    static_configs:
+      - targets: ["nginx-exporter:9113"]
+        labels:
+          instance: "travessia-mvp"
+
+  # Sonda de disponibilidade/latência do MVP (blackbox).
+  - job_name: "blackbox"
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - "http://4.168.236.152/"
+        labels:
+          instance: "travessia-mvp"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: target
+      - target_label: __address__
+        replacement: blackbox:9115

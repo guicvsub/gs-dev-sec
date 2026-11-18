@@ -1,0 +1,16 @@
+# Copie para terraform.tfvars (fora do repo) e preencha com seus valores.
+# Este arquivo NÃO deve ser versionado.
+
+project_name    = "travessia"
+openstack_user  = "SEU_USUARIO"
+openstack_password = "SUA_SENHA"
+openstack_tenant_id = "SEU_PROJECT_ID"
+openstack_auth_url  = "https://identity.aisprovedor.com.br/v3"
+openstack_region    = "SAO1"
+
+image_name     = "Ubuntu 24.04"
+flavor_name    = "m1.small"
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"
+
+# Restrito - NUNCA 0.0.0.0/0 na porta admin.
+admin_ssh_cidr = "SEU_IP_DE_CASA/32"

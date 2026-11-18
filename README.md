@@ -1,7 +1,7 @@
 # Travessia — Assistente de semáforo para pedestres
 
-> MVP da **Global Solution FIAP 2026.2 — CitizenTech**, empacotado em container e
-> publicado em uma **VPS própria** (AIS, Ubuntu 24.04) com Docker e Nginx.
+> MVP da **Global Solution FIAP 2026.2 — CitizenTech**, empacotado em container,
+> provisionado na VPS via **Terraform (IaC)** e publicado com Docker Compose e Nginx.
 
 **URL pública:** <http://4.168.236.152/>
 **Repositório público:** <https://github.com/guicvsub/gs-dev-sec>
@@ -25,10 +25,10 @@
 | **Solução** | Uma câmera vestível (ESP32-CAM) filma a via; o software reconhece faixa, semáforo e veículos e devolve um aviso simples em tela, voz e vibração. |
 | **MVP demonstrável** | Site em React que reproduz um vídeo público de São Paulo com as detecções do modelo sobrepostas e o aviso acessível. Usa detecções já salvas, então **não precisa de chave do Roboflow para rodar**. |
 | **Público-alvo** | Pessoas com deficiência visual, seus acompanhantes e equipes de mobilidade urbana. |
-| **Stack** | React 19 + Vite 8 + Tailwind 4; Python 3.13 + OpenCV + Roboflow (núcleo opcional); Docker; Nginx unprivileged; GitHub Actions. |
-| **Infraestrutura** | VPS Linux (AIS) com Docker Compose; Nginx (PaaS do container) servindo o site na porta 80. |
-| **Segurança** | Gitleaks e Semgrep bloqueando o deploy; secrets fora do repositório; container roda sem root (UID 101); headers de segurança no Nginx. |
-| **Observabilidade** | Logs JSON do Nginx no stdout do container (fáceis de consultar com `docker compose logs`). |
+| **Stack** | React 19 + Vite 8 + Tailwind 4; Python 3.13 + OpenCV + Roboflow (núcleo opcional); Docker; Nginx unprivileged; Terraform (OpenStack); GitHub Actions. |
+| **Infraestrutura** | VPS Linux (AIS) provisionada por **Terraform** (OpenStack); Docker Compose + Nginx na porta 80. State e `.tfvars` ficam **fora do repo**. |
+| **Segurança** | Gitleaks, Semgrep e **Trivy** bloqueando o pipeline; secrets (chave SSH) em **GitHub Secrets**; porta admin/SSH **nunca** aberta para `0.0.0.0/0` (só a 80 é pública). |
+| **Observabilidade** | **Prometheus + Grafana locais** com as **4 métricas de ouro** (latência, tráfego, erros e saturação) apontando para o MVP publicado, com **alerta disparado**. |
 | **Status** | **No ar** em <http://4.168.236.152/> (VPS AIS, Ubuntu 24.04, Docker + Nginx) |
 
 ---
@@ -84,24 +84,27 @@ no [relatório](docs/RELATORIO.md). O fluxo é:
 git push na main
         │
         ▼
-GitHub Actions — security (Gitleaks + Semgrep)
+GitHub Actions — security (Gitleaks + Semgrep + Trivy)
         │
         ▼
 GitHub Actions — build da imagem Docker
         │
         ▼
+GitHub Actions — deploy automático (SSH → VPS AIS → docker compose up)
+        │
+        ▼
 VPS AIS (Ubuntu 24.04) — Docker Compose + Nginx não-root :8080 → porta 80
         │
-        └─ docker compose pull && docker compose up -d (deploy)
+        └─ Observabilidade local: Prometheus + Grafana
 ```
 
 | Camada | Componente | Papel |
 | --- | --- | --- |
 | Aplicação | Container `web` (Docker) | Servir o site em React via Nginx. |
-| Servidor | VPS AIS (Ubuntu 24.04) | Hospedagem do Docker até o MVP; IP público fixo. |
+| Servidor | VPS AIS (Ubuntu 24.04) | Provisionada por **Terraform (OpenStack)**; IP público fixo. |
 | Proxy/Web | Nginx unprivileged | Expoe a porta 80 e serve os arquivos estáticos. |
-| CI/CD | GitHub Actions | Gitleaks + Semgrep (segurança) e build da imagem. |
-| Observabilidade | Logs JSON no stdout | Consulta com `docker compose logs web`. |
+| CI/CD | GitHub Actions | Gitleaks + Semgrep + Trivy, build e **deploy automático via SSH**. |
+| Observabilidade | Prometheus + Grafana (locais) | 4 métricas de ouro do MVP publicado + alerta. |
 
 ### Por que o site não precisa do Roboflow em produção?
 
@@ -122,7 +125,17 @@ workflow**.
 | --- | --- | --- | --- | --- |
 | 1 | `security` → `gitleaks` | Gitleaks 8.28 | Segredos no histórico completo do Git (fetch-depth 0). | O deploy não começa. |
 | 2 | `security` → `semgrep` | Semgrep (`p/default` + `p/secrets`) | SAST de Python, JavaScript, Dockerfile e workflows. | O deploy não começa. |
-| 3 | `build` | Docker | Build da imagem `travessia-web:latest`. | O site antigo continua no ar na VPS. |
+| 3 | `security` → `trivy` | Trivy | Vulnerabilidades CRITICAL/HIGH na imagem Docker. | O deploy não começa. |
+| 4 | `build` | Docker | Build da imagem `travessia-web`. | O site antigo continua no ar na VPS. |
+| 5 | `deploy` → SSH | appleboy/ssh-action | `git pull` + `docker compose up -d --build` na VPS via chave SSH (GitHub Secret). | O site antigo continua no ar. |
+| 6 | `deploy` → verificação | `curl` | `GET http://IP/` precisa responder **200**. | O job falha; a URL não é considerada no ar. |
+
+**Deploy automático e secrets:**
+
+- O deploy roda automaticamente a cada push na `main` (e por `workflow_dispatch`).
+- A chave SSH (`VPS_SSH_KEY`), o usuário (`VPS_USER`) e a porta (`VPS_SSH_PORT`) ficam em
+  **GitHub Secrets** — nunca no código.
+- Host e caminho na VPS podem vir de **variables** (`VPS_HOST`, `VPS_PATH`).
 
 O workflow de PR (`.github/workflows/pr.yml`) repete a segurança e faz o build da imagem
 sem publicar nada.
@@ -130,19 +143,54 @@ sem publicar nada.
 **Decisões de segurança do pipeline:**
 
 - As actions são referenciadas pelo **SHA completo** do commit, não por tags móveis.
-- O Gitleaks roda com `--redact` e falha com `--exit-code 1`; o relatório do Semgrep é
-  publicado como artefato SARIF.
+- O Gitleaks roda com `--redact` e falha com `--exit-code 1`; Semgrep e Trivy publicam
+  relatórios SARIF como artefatos.
 - O container roda como usuário **nginx (UID 101)**, não como root.
 - O `.env` real (com a chave do Roboflow) nunca entra no repositório.
 
 ---
 
-## Observabilidade
+## Observabilidade (Prometheus + Grafana)
 
-- **Logs:** o Nginx grava access logs em **JSON no stdout**. Consulte com
-  `docker compose logs web`.
-- **Formato JSON:** permite filtrar por `status`, `request`, `remote_addr`, `bytes` e
-  `user_agent` de forma simples.
+As **4 métricas de ouro** do MVP publicado são exibidas em um **Grafana** local, alimentado
+por **Prometheus**. A rubrica permite Prometheus/Grafana rodando localmente apontando para
+o MVP no ar.
+
+```bash
+docker compose -f docker-compose.observability.yml up -d
+# Prometheus: http://localhost:9090   Grafana: http://localhost:3000
+```
+
+| Métrica de ouro | Métrica no Prometheus | Fonte |
+| --- | --- | --- |
+| **Latência** | `probe_duration_seconds` | blackbox-exporter (sonda HTTP) |
+| **Tráfego** | `rate(nginx_http_requests_total[5m])` | nginx-prometheus-exporter (`/stub_status`) |
+| **Erros / Disponibilidade** | `probe_success` | blackbox-exporter |
+| **Saturação** | `nginx_connections_active` | nginx-prometheus-exporter |
+
+**Alertas** (`monitoring/alerts.yml`): `MVPDown` (fora do ar por 1 min) e
+`MVPHighLatency` (latência > 3 s). O dashboard `Travessia - 4 Métricas de Ouro` é
+provisionado automaticamente no Grafana e mostra as 4 métricas + alertas.
+
+> O Nginx expõe `/stub_status` (read-only) para o exporter coletar as métricas.
+
+---
+
+## IaC com Terraform (OpenStack)
+
+A VPS é provisionada como código em [`terraform/`](terraform/):
+
+- `versions.tf`, `providers.tf`, `variables.tf`, `network.tf`, `compute.tf`, `outputs.tf`.
+- **State e `.tfvars` ficam fora do repositório** (no `.gitignore`).
+- **Porta administrativa/SSH nunca é aberta para `0.0.0.0/0`** — só a porta 80 é pública;
+  o SSH é restrito a um CIDR específico (`admin_ssh_cidr`).
+
+```bash
+cd terraform
+terraform init -backend-config=backend.hcl   # backend preenchido fora do repo
+terraform plan -var-file=tfvars.example       # ajuste o .tfvars (não versionado)
+terraform apply -var-file=terraform.tfvars
+```
 
 ---
 
@@ -224,23 +272,41 @@ pipeline de produção.
 
 ## Deploy em produção (VPS AIS)
 
-O passo a passo completo, incluindo a configuração da VPS, está em
-[`DEPLOY.md`](DEPLOY.md). Resumo:
+O passo a passo completo está em [`DEPLOY.md`](DEPLOY.md). Resumo:
 
 1. **Crie um repositório público** no GitHub e envie este projeto para a branch `main`.
-2. **Na VPS**, instale Docker e Docker Compose (Ubuntu 24.04).
-3. Copie o projeto (ou faça `git clone`) para a VPS.
-4. Crie o `.env` na VPS (apenas se for usar o núcleo Python opcional).
-5. Suba o site:
-   ```bash
-   docker compose up -d --build web
-   ```
-6. Confirme que a URL pública responde:
-   ```bash
-   curl -I http://IP_DA_VPS
-   ```
+2. **Provisione a VPS com Terraform** (OpenStack/AIS): `terraform apply`. Isso cria a
+   instância, o floating IP e o security group (só a porta 80 é pública).
+3. **Configure os GitHub Secrets** do pipeline: `VPS_SSH_KEY`, `VPS_USER` (e opcionalmente
+   `VPS_SSH_PORT`) e as variables `VPS_HOST`, `VPS_PATH`.
+4. **Faça o push na `main`**: o pipeline roda Gitleaks + Semgrep + Trivy, builda a imagem
+   e faz o **deploy automático via SSH** (`git pull` + `docker compose up -d --build web`).
+5. Confirme que a URL responde: `curl -I http://IP_DA_VPS`.
 
-> O IP público da VPS é fixo; o MVP fica disponível em <http://4.168.236.152/>.
+> O pipeline deploys sozinho. Para observabilidade, suba o Prometheus + Grafana locais
+> (seção acima) apontando para o MVP.
+
+---
+
+## Dados pessoais e LGPD
+
+O MVP reproduz um **vídeo público de uma rua de São Paulo** que pode conter **pessoas
+(imagens), além de placas de carros e identificadores**. Tratamento:
+
+| Dado | Onde fica | Observação |
+| --- | --- | --- |
+| Imagens/vídeo (pessoas visíveis) | Vídeo público do YouTube referenciado | Não é coletado nem armazenado pela aplicação. |
+| Detecções pré-computadas | `frontend/public/dados/deteccoes-video.json` | São apenas **bounding boxes e classes** (`pedestrian_crossing`, `green_light`, `red_light`, `vehicle`) — **não contêm rostos reconhecíveis**. |
+| Dados do usuário final | Nenhum | O site **não coleta** nome, e-mail, localização nem qualquer dado pessoal do usuário. |
+
+**Responsabilidade compartilhada (modelo CSP):**
+
+- **Provedor (AIS):** segurança física e de infraestrutura da VPS, disponibilidade da
+  rede e da plataforma do datacenter.
+- **Cliente (nós/equipe):** a aplicação, o container, as credenciais (secrets), os dados
+  processados, as configurações de segurança e o cumprimento da LGPD sobre os dados.
+- A aplicação é stateless e **não persiste dados pessoais**; por isso o risco à privacidade
+  é mínimo. Não há coleta, processamento ou compartilhamento de dados pessoais no MVP.
 
 ---
 
@@ -249,15 +315,31 @@ O passo a passo completo, incluindo a configuração da VPS, está em
 ```text
 .
 ├── .github/workflows/
-│   ├── security.yml        # Gitleaks + Semgrep (reutilizável)
+│   ├── security.yml        # Gitleaks + Semgrep + Trivy (reutilizável)
 │   ├── pr.yml              # segurança + build da imagem
-│   └── deploy.yml          # pipeline principal (push na main)
+│   └── deploy.yml          # pipeline principal (build + deploy automático SSH)
+├── terraform/              # IaC da VPS (OpenStack) - state/.tfvars fora do repo
+│   ├── versions.tf
+│   ├── providers.tf
+│   ├── variables.tf        # inclui admin_ssh_cidr (nunca 0.0.0.0/0)
+│   ├── network.tf          # security group (só 80 pública)
+│   ├── compute.tf
+│   ├── outputs.tf
+│   ├── backend.hcl.example
+│   └── tfvars.example
 ├── scripts/
 │   └── deploy-vps.sh       # deploy manual na VPS (Docker Compose)
+├── monitoring/             # Prometheus + Grafana locais
+│   ├── prometheus.yml
+│   ├── alerts.yml
+│   ├── blackbox.yml
+│   ├── dashboards/travessia-golden.json
+│   └── provisioning/
+├── docker-compose.yml
+├── docker-compose.observability.yml   # stack de observabilidade local
 ├── Dockerfile              # build do site + Nginx unprivileged :8080
 ├── Dockerfile.core         # núcleo Python headless (opcional)
-├── docker-compose.yml
-├── nginx.conf              # logs JSON, headers de segurança, SPA fallback
+├── nginx.conf              # logs JSON, /stub_status, headers, SPA fallback
 ├── frontend/               # site React + Vite
 ├── main.py + utility/      # núcleo Python (opcional)
 ├── docs/
@@ -275,14 +357,34 @@ O passo a passo completo, incluindo a configuração da VPS, está em
 ## Segurança e limitações
 
 - **Segredos:** o `.env` real fica fora do Git; o `.env.example` tem apenas placeholder.
-  Se uma chave vazar no histórico, o Gitleaks bloqueia o pipeline. Nesse caso, **rotacione
-  a chave** e reescreva o histórico (ou recrie o repositório).
-- **CI/CD:** o pipeline valida segurança e build. O deploy na VPS é manual (via Docker
-  Compose). Uma evolução é integrar o deploy à pipeline com SSH.
+  A chave SSH e o usuário da VPS ficam em **GitHub Secrets**. Se uma chave vazar no
+  histórico, o Gitleaks bloqueia o pipeline. Nesse caso, **rotacione a chave** e reescreva
+  o histórico (ou recrie o repositório).
+- **Porta admin:** o **SSH/porta administrativa nunca é aberta para `0.0.0.0/0`** — apenas
+  a porta 80 é pública (definido no `terraform/network.tf` via `admin_ssh_cidr`).
+- **State e `.tfvars`:** ficam **fora do repositório** (`.gitignore`), conforme a rubrica.
+- **CI/CD:** o pipeline roda Gitleaks, Semgrep e **Trivy** e faz **deploy automático via
+  SSH**. Vulnerabilidade CRITICAL/HIGH na imagem bloqueia o deploy.
 - **HTTP:** o MVP é publicado em HTTP (sem domínio/HTTPS). Uma evolução é usar um proxy
   TLS (Caddy com Let's Encrypt, por exemplo).
-- **Backup:** a VPS não possui snapshot automático configurado; recomenda-se criar
-  snapshots periódicos.
+- **Backup:** recomenda-se criar snapshots periódicos da VPS.
+
+---
+
+## Custos estimados
+
+Provedor **AIS (plano VPS)** — estimativa mensal aproximada, por mês:
+
+| Item | Estimativa/mês |
+| --- | --- |
+| VPS AIS (CPU 1–2 vCPU, 2–4 GB RAM, disco 20–40 GB) | **R$ 40–80** |
+| IP público (floating IP), se cobrado | R$ 0–10 |
+| Tráfego de saída (MVP de baixa demanda) | ~R$ 0–5 |
+| **Total estimado** | **≈ R$ 45–95/mês** |
+
+> Valor de referência; confirme o plano vigente no site da AIS. O custo é fixo e
+> previsível (sem serviços gerenciados de nuvem). O núcleo Python opcional consome
+> créditos do Roboflow à parte.
 
 ---
 
