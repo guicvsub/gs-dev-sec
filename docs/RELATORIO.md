@@ -3,9 +3,10 @@
 **FIAP — Global Solution 2026.2 • CitizenTech**
 **Secure DevOps Tools & Cloud Computing — Prof. Cleórbete Santos**
 
-> **Antes de exportar o PDF:** substitua `SEU_USUARIO`, `SEU_REPO`, `IP_PUBLICO` e os
-> campos `[PREENCHER]` pelos dados reais. Salve os prints em `docs/prints/` com os nomes
-> da seção 9. O arquivo `docs/relatorio.html` já está formatado para impressão.
+> **Antes de exportar o PDF:** preencha o nome da equipe, os integrantes/RMs e o
+> link do **dashboard** (no resumo do deploy). Salve os prints em `docs/prints/`
+> com os nomes da seção 9. O arquivo `docs/relatorio.html` já está formatado para
+> impressão. Repositório público: <https://github.com/guicvsub/gs-dev-sec>.
 
 ---
 
