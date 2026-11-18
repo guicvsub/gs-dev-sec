@@ -6,7 +6,6 @@ node_modules/
 dist/
 .git/
 docs/
-terraform/.terraform/
 package-lock.json
 *.min.js
 

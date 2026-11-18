@@ -8,20 +8,5 @@ deteccoes/
 *.tar.gz
 *.zip
 
-# Terraform
-terraform/.terraform/
-terraform/backend.hcl
-*.tfstate
-*.tfstate.*
-*.tfplan
-*.tfvars
-!*.tfvars.example
-crash.log
-crash.*.log
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
-
 # Relatórios gerados
 semgrep.sarif

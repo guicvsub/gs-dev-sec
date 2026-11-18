@@ -1,14 +1,14 @@
 # Travessia — Assistente de semáforo para pedestres
 
-> MVP da **Global Solution FIAP 2026.2 — CitizenTech**, preparado para a atividade
-> **Deploy Blindado**: container, Terraform, pipeline DevSecOps e observabilidade na AWS.
+> MVP da **Global Solution FIAP 2026.2 — CitizenTech**, empacotado em container e
+> publicado em uma **VPS própria** (AIS, Ubuntu 24.04) com Docker e Nginx.
 
 **URL pública:** <http://4.168.236.152/>
 **Repositório público:** <https://github.com/guicvsub/gs-dev-sec>
 **Pipeline:** [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
 **Relatório:** [`docs/RELATORIO.md`](docs/RELATORIO.md) • **Evidências:** [`docs/EVIDENCIAS.md`](docs/EVIDENCIAS.md) • **Guia de deploy:** [`DEPLOY.md`](DEPLOY.md)
 
-![Arquitetura do Deploy Blindado](docs/arquitetura.svg)
+![Arquitetura do Deploy](docs/arquitetura.svg)
 
 ---
 
@@ -18,19 +18,18 @@
 | --- | --- |
 | **Nome** | Travessia — assistente de semáforo para pedestres |
 | **Projeto** | CitizenTech — FIAP Global Solution 2026.2 |
-| **Atividade** | Deploy Blindado (Secure DevOps Tools & Cloud Computing) |
-| **Equipe** | _[preencher nome da equipe]_ |
-| **Integrantes** | _[Nome 1 — RMxxxxx]_, _[Nome 2 — RMxxxxx]_, _[Nome 3 — RMxxxxx]_ |
+| **Atividade** | Deploy seguro em VPS (Secure DevOps Tools & Cloud Computing) |
+| **Equipe** | GS7 (Global Solution 7) |
+| **Integrantes** | Guilherme Santiago da Silva (RM552321), Gustavo Govea Soares (RM553842), Pedro Henrique Mello Silva Alves (RM554223), Gabriel Borba (RM553187) |
 | **Problema** | Pessoas cegas ou com baixa visão não conseguem interpretar com segurança a faixa de pedestre e o semáforo ao atravessar a rua. |
 | **Solução** | Uma câmera vestível (ESP32-CAM) filma a via; o software reconhece faixa, semáforo e veículos e devolve um aviso simples em tela, voz e vibração. |
 | **MVP demonstrável** | Site em React que reproduz um vídeo público de São Paulo com as detecções do modelo sobrepostas e o aviso acessível. Usa detecções já salvas, então **não precisa de chave do Roboflow para rodar**. |
 | **Público-alvo** | Pessoas com deficiência visual, seus acompanhantes e equipes de mobilidade urbana. |
-| **Stack** | React 19 + Vite 8 + Tailwind 4; Python 3.13 + OpenCV + Roboflow (núcleo opcional); Docker; Nginx unprivileged; Terraform 1.10; AWS; GitHub Actions. |
-| **Nuvem** | VPC + subnet pública, EC2 `t3.micro` (Ubuntu 24.04), Elastic IP, ECR, IAM, CloudWatch, SNS e S3. |
-| **Segurança** | Gitleaks e Semgrep bloqueando o deploy; ECR com tags imutáveis e scan on push; IMDSv2; security group só com HTTP 80; **sem SSH** (acesso via SSM); EBS criptografado; actions fixadas por SHA. |
-| **Observabilidade** | Logs JSON do Nginx no CloudWatch, dashboard `travessia-mvp`, alarmes de 5xx/CPU/status e alerta por e-mail via SNS. |
-| **Custo estimado** | ≈ **US$ 13/mês** em `us-east-1` on-demand (EC2 + EBS + IPv4 público + serviços gerenciados). |
-| **Status** | **No ar** em <http://4.168.236.152/> (VPS Azure, Ubuntu 24.04, Docker + Nginx) |
+| **Stack** | React 19 + Vite 8 + Tailwind 4; Python 3.13 + OpenCV + Roboflow (núcleo opcional); Docker; Nginx unprivileged; GitHub Actions. |
+| **Infraestrutura** | VPS Linux (AIS) com Docker Compose; Nginx (PaaS do container) servindo o site na porta 80. |
+| **Segurança** | Gitleaks e Semgrep bloqueando o deploy; secrets fora do repositório; container roda sem root (UID 101); headers de segurança no Nginx. |
+| **Observabilidade** | Logs JSON do Nginx no stdout do container (fáceis de consultar com `docker compose logs`). |
+| **Status** | **No ar** em <http://4.168.236.152/> (VPS AIS, Ubuntu 24.04, Docker + Nginx) |
 
 ---
 
@@ -54,7 +53,7 @@ O projeto tem duas partes:
   A página não tem back-end: usa as detecções já geradas em
   `frontend/public/dados/deteccoes-video.json`.
 
-> O site é o **MVP público** e é o que sobe na AWS. O núcleo em Python é opcional, roda em
+> O site é o **MVP público** e é o que sobe na VPS. O núcleo em Python é opcional, roda em
 > modo headless e consome créditos do Roboflow; ele não é iniciado pelo pipeline.
 
 ### Funcionalidades
@@ -88,28 +87,21 @@ git push na main
 GitHub Actions — security (Gitleaks + Semgrep)
         │
         ▼
-GitHub Actions — infrastructure (Terraform fmt/validate/apply)
+GitHub Actions — build da imagem Docker
         │
         ▼
-GitHub Actions — deploy (build → ECR → SSM → healthcheck HTTP 200)
+VPS AIS (Ubuntu 24.04) — Docker Compose + Nginx não-root :8080 → porta 80
         │
-        ▼
-EC2 t3.micro (Docker + Nginx não-root :8080) ← Elastic IP ← navegador
-        │
-        ├─ logs JSON → CloudWatch Logs → dashboard + alarmes → SNS → e-mail
-        └─ state do Terraform no S3
+        └─ docker compose pull && docker compose up -d (deploy)
 ```
 
-| Camada | Serviço | Papel |
+| Camada | Componente | Papel |
 | --- | --- | --- |
-| Computação | EC2 `t3.micro` com Ubuntu 24.04 | Roda o container do site (Docker + Nginx). |
-| Rede | VPC, subnet pública, Internet Gateway, Elastic IP | Expõe apenas a porta 80; sem porta 22. |
-| Registry | Amazon ECR | Guarda as imagens; tags imutáveis e scan on push. |
-| Acesso | SSM Session Manager + IAM Role | Administração sem SSH e sem chaves na instância. |
-| IaC | Terraform + backend S3 | Cria VPC, EC2, ECR, IAM, CloudWatch, SNS e alarmes. |
-| CI/CD | GitHub Actions | Segurança, build, push, apply e deploy. |
-| Observabilidade | CloudWatch + SNS | Logs, dashboard, métricas e alertas por e-mail. |
-| Estado | S3 versionado e criptografado | State remoto com lock nativo (Terraform ≥ 1.10). |
+| Aplicação | Container `web` (Docker) | Servir o site em React via Nginx. |
+| Servidor | VPS AIS (Ubuntu 24.04) | Hospedagem do Docker até o MVP; IP público fixo. |
+| Proxy/Web | Nginx unprivileged | Expoe a porta 80 e serve os arquivos estáticos. |
+| CI/CD | GitHub Actions | Gitleaks + Semgrep (segurança) e build da imagem. |
+| Observabilidade | Logs JSON no stdout | Consulta com `docker compose logs web`. |
 
 ### Por que o site não precisa do Roboflow em produção?
 
@@ -129,65 +121,28 @@ workflow**.
 | Ordem | Job | Ferramenta | O que valida | Se falhar |
 | --- | --- | --- | --- | --- |
 | 1 | `security` → `gitleaks` | Gitleaks 8.28 | Segredos no histórico completo do Git (fetch-depth 0). | O deploy não começa. |
-| 2 | `security` → `semgrep` | Semgrep (`p/default` + `p/secrets`) | SAST de Python, JavaScript, Terraform, Dockerfile e workflows. | O deploy não começa. |
-| 3 | `infrastructure` | Terraform 1.10.5 | `fmt`, `validate` e `apply` com state no S3. | Nada é publicado. |
-| 4 | `deploy` → build | Docker | Build da imagem e push para o ECR com tag `SHA-RUN_ATTEMPT`. | O container antigo continua no ar. |
-| 5 | `deploy` → SSM | AWS Systems Manager | Pull da imagem, troca do container e healthcheck local. | O job falha com os logs do container. |
-| 6 | `deploy` → verificação | `curl` | `GET http://IP/` precisa responder **200**. | O job falha; a URL não é considerada no ar. |
+| 2 | `security` → `semgrep` | Semgrep (`p/default` + `p/secrets`) | SAST de Python, JavaScript, Dockerfile e workflows. | O deploy não começa. |
+| 3 | `build` | Docker | Build da imagem `travessia-web:latest`. | O site antigo continua no ar na VPS. |
 
-O workflow de PR (`.github/workflows/pr.yml`) repete a segurança, faz o build da imagem e
-roda `terraform fmt -check` + `terraform validate` sem aplicar nada. O workflow
-`.github/workflows/destroy.yml` existe para destruir a infraestrutura ao final da
-atividade (mantendo o bucket de state).
+O workflow de PR (`.github/workflows/pr.yml`) repete a segurança e faz o build da imagem
+sem publicar nada.
 
 **Decisões de segurança do pipeline:**
 
 - As actions são referenciadas pelo **SHA completo** do commit, não por tags móveis.
 - O Gitleaks roda com `--redact` e falha com `--exit-code 1`; o relatório do Semgrep é
   publicado como artefato SARIF.
-- O ECR é **imutável**: uma tag publicada não pode ser sobrescrita; cada execução usa
-  `SHA-RUN_ATTEMPT`.
-- O deploy usa **SSM**, não SSH: a instância não tem chave `.pem` nem porta 22 aberta.
 - O container roda como usuário **nginx (UID 101)**, não como root.
+- O `.env` real (com a chave do Roboflow) nunca entra no repositório.
 
 ---
 
 ## Observabilidade
 
-- **Logs:** o Nginx grava access logs em JSON no stdout; o Docker usa o driver `awslogs`
-  para enviar ao log group `travessia-web` (retenção de 14 dias).
-- **Métrica:** o metric filter `Http5xx` conta respostas com `status >= 500` no namespace
-  `Travessia/Web`.
-- **Dashboard:** `travessia-mvp`, com CPU, rede, erros 5xx, Logs Insights e estado dos
-  alarmes.
-- **Alarmes:** `travessia-http-5xx`, `travessia-cpu-high` e `travessia-status-check`.
-  Todos publicam no tópico SNS `travessia-alerts`.
-- **Alerta:** assinatura de e-mail no SNS. **Confirme o e-mail** após o primeiro apply
-  (o Terraform cria a assinatura em estado `PendingConfirmation`).
-
-O dashboard e os alarmes são criados pelo Terraform; a URL do dashboard aparece no
-resumo do job de deploy e em `terraform output dashboard_url`.
-
----
-
-## Custos
-
-Estimativa de referência para `us-east-1`, preço on-demand, 730 horas/mês:
-
-| Item | Cálculo | US$/mês |
-| --- | --- | ---: |
-| EC2 `t3.micro` | 730 h × US$ 0,0104 | 7,59 |
-| EBS gp3 | 20 GB × US$ 0,08/GB | 1,60 |
-| IPv4 público (Elastic IP) | 730 h × US$ 0,005 | 3,65 |
-| ECR | ~0,1 GB + requests | 0,02 |
-| CloudWatch Logs | ingestão/armazenamento pequenos | 0,10 |
-| S3 (state) + SNS | < 1 MB + e-mails | 0,00 |
-| **Total aproximado** | | **≈ 12,96** |
-
-> Valores de referência; confirme na [calculadora da AWS](https://calculator.aws/).
-> O IPv4 público é cobrado mesmo com a instância parada, e o EBS continua cobrando
-> enquanto existir. Para encerrar tudo, use o workflow **Destroy** e depois exclua o
-> bucket de state se não for mais usar.
+- **Logs:** o Nginx grava access logs em **JSON no stdout**. Consulte com
+  `docker compose logs web`.
+- **Formato JSON:** permite filtrar por `status`, `request`, `remote_addr`, `bytes` e
+  `user_agent` de forma simples.
 
 ---
 
@@ -267,31 +222,25 @@ pipeline de produção.
 
 ---
 
-## Deploy em produção (AWS)
+## Deploy em produção (VPS AIS)
 
-O passo a passo completo, incluindo a criação do usuário IAM e a configuração dos
-secrets, está em [`DEPLOY.md`](DEPLOY.md). Resumo:
+O passo a passo completo, incluindo a configuração da VPS, está em
+[`DEPLOY.md`](DEPLOY.md). Resumo:
 
 1. **Crie um repositório público** no GitHub e envie este projeto para a branch `main`.
-2. **Crie um usuário IAM** para o pipeline com as políticas `PowerUserAccess` e
-   `IAMFullAccess` e gere uma access key.
-3. No GitHub, em **Settings → Secrets and variables → Actions**, configure:
-   - Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
-   - Variables: `AWS_REGION` (`us-east-1`), `ALERT_EMAIL` (seu e-mail) e,
-     opcionalmente, `TF_STATE_BUCKET`.
-4. Rode o workflow **Deploy** (ou faça um push na `main`). Ele cria o bucket de state,
-   aplica o Terraform, publica a imagem no ECR, faz o deploy via SSM e valida a URL.
-5. **Confirme a assinatura do SNS** no e-mail que chegar e guarde a URL e o link do
-   dashboard que aparecem no resumo do job.
+2. **Na VPS**, instale Docker e Docker Compose (Ubuntu 24.04).
+3. Copie o projeto (ou faça `git clone`) para a VPS.
+4. Crie o `.env` na VPS (apenas se for usar o núcleo Python opcional).
+5. Suba o site:
+   ```bash
+   docker compose up -d --build web
+   ```
+6. Confirme que a URL pública responde:
+   ```bash
+   curl -I http://IP_DA_VPS
+   ```
 
-> O primeiro deploy leva cerca de 8 a 12 minutos (criação da VPC/EC2 + instalação do
-> Docker + pull da imagem). Os próximos são mais rápidos.
-
-### Destruir a infraestrutura
-
-Em **Actions → Destroy → Run workflow**, digite `destroy`. O workflow executa
-`terraform destroy` e mantém o bucket de state. Para remover o bucket depois, use o
-console da AWS ou a CLI.
+> O IP público da VPS é fixo; o MVP fica disponível em <http://4.168.236.152/>.
 
 ---
 
@@ -301,20 +250,10 @@ console da AWS ou a CLI.
 .
 ├── .github/workflows/
 │   ├── security.yml        # Gitleaks + Semgrep (reutilizável)
-│   ├── pr.yml              # segurança + build + terraform validate
-│   ├── deploy.yml          # pipeline principal (push na main)
-│   └── destroy.yml         # terraform destroy manual
-├── terraform/
-│   ├── versions.tf         # provider AWS + backend S3
-│   ├── providers.tf
-│   ├── variables.tf
-│   ├── network.tf          # VPC, subnet, IGW, security group
-│   ├── compute.tf          # AMI, ECR, IAM, EC2, EIP
-│   ├── observability.tf    # logs, métricas, dashboard, alarmes, SNS
-│   ├── outputs.tf
-│   ├── backend.hcl.example
-│   └── scripts/user_data.sh
-├── scripts/deploy-remote.sh
+│   ├── pr.yml              # segurança + build da imagem
+│   └── deploy.yml          # pipeline principal (push na main)
+├── scripts/
+│   └── deploy-vps.sh       # deploy manual na VPS (Docker Compose)
 ├── Dockerfile              # build do site + Nginx unprivileged :8080
 ├── Dockerfile.core         # núcleo Python headless (opcional)
 ├── docker-compose.yml
@@ -338,18 +277,12 @@ console da AWS ou a CLI.
 - **Segredos:** o `.env` real fica fora do Git; o `.env.example` tem apenas placeholder.
   Se uma chave vazar no histórico, o Gitleaks bloqueia o pipeline. Nesse caso, **rotacione
   a chave** e reescreva o histórico (ou recrie o repositório).
-- **IAM:** para a atividade, o pipeline usa um usuário com `PowerUserAccess` +
-  `IAMFullAccess` e chaves de longa duração. Em produção, o recomendado é **OIDC** entre
-  GitHub Actions e AWS, com uma role de menor privilégio e sem access keys.
-- **HTTP:** o MVP é publicado em HTTP (sem domínio/HTTPS). Uma evolução é usar CloudFront
-  + ACM ou um proxy com Let's Encrypt.
-- **Single instance:** uma única `t3.micro` em uma AZ, sem auto scaling. É adequado ao
-  MVP e ao custo da atividade; produção exigiria ALB, multi-AZ e backup.
-- **ECR scan:** o scan on push está habilitado, mas o pipeline não bloqueia por findings
-  do scan; ele bloqueia por Gitleaks/Semgrep. Integrar o resultado do ECR ao gate é uma
-  evolução natural.
-- **Custo:** destrua a infraestrutura ao final da atividade para evitar cobranças
-  contínuas de IPv4/EBS.
+- **CI/CD:** o pipeline valida segurança e build. O deploy na VPS é manual (via Docker
+  Compose). Uma evolução é integrar o deploy à pipeline com SSH.
+- **HTTP:** o MVP é publicado em HTTP (sem domínio/HTTPS). Uma evolução é usar um proxy
+  TLS (Caddy com Let's Encrypt, por exemplo).
+- **Backup:** a VPS não possui snapshot automático configurado; recomenda-se criar
+  snapshots periódicos.
 
 ---
 
@@ -357,17 +290,17 @@ console da AWS ou a CLI.
 
 | Nome | RM | Responsabilidade |
 | --- | --- | --- |
-| _[preencher]_ | _[preencher]_ | _[preencher]_ |
-| _[preencher]_ | _[preencher]_ | _[preencher]_ |
-| _[preencher]_ | _[preencher]_ | _[preencher]_ |
+| Guilherme Santiago da Silva | RM552321 | Full-stack / infraestrutura |
+| Gustavo Govea Soares | RM553842 | Front-end / interface |
+| Pedro Henrique Mello Silva Alves | RM554223 | Núcleo Python / visão computacional |
+| Gabriel Borba | RM553187 | Pipeline / DevSecOps |
 
 ---
 
 ## Referências
 
-- [Guia de deploy na AWS](DEPLOY.md)
-- [Relatório do Deploy Blindado](docs/RELATORIO.md)
+- [Guia de deploy na VPS](DEPLOY.md)
+- [Relatório do Deploy](docs/RELATORIO.md)
 - [Checklist de evidências](docs/EVIDENCIAS.md)
 - [Documentação do front-end](frontend/README.md)
-- [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
 - [GitHub Actions — reusing workflows](https://docs.github.com/actions/using-workflows/reusing-workflows)

@@ -25,28 +25,3 @@ jobs:
 
       - name: Build
         run: docker build -t travessia-web:pr .
-
-  terraform:
-    name: Terraform (fmt e validate)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Instalar Terraform
-        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
-        with:
-          terraform_version: 1.10.5
-          terraform_wrapper: false
-
-      - name: Init sem backend
-        working-directory: terraform
-        run: terraform init -backend=false -input=false -no-color
-
-      - name: Verificar formatação
-        working-directory: terraform
-        run: terraform fmt -check -recursive -diff
-
-      - name: Validar
-        working-directory: terraform
-        run: terraform validate -no-color
