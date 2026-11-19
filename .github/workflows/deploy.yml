@@ -51,7 +51,17 @@ jobs:
           script: |
             set -e
             cd ${{ vars.VPS_PATH || '$HOME/gs-dev-sec' }}
-            git pull
+            if [ ! -d .git ]; then
+              git init
+              git remote add origin https://github.com/guicvsub/gs-dev-sec.git
+              git fetch origin
+              git checkout -B main origin/main
+            else
+              git fetch origin
+              git checkout main 2>/dev/null || git checkout -B main origin/main || true
+              git branch --set-upstream-to=origin/main main || true
+              git pull --ff-only origin main
+            fi
             docker compose up -d --build web
             docker compose ps web
 
