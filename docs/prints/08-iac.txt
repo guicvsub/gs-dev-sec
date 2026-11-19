@@ -1,5 +1,8 @@
 # Evidência 08 — IaC (Terraform / OpenStack)
 
+**Data:** 2026-11-18
+**Print:** `08-iac.png` ✅ (aplicação rodando na VPS)
+
 **Arquivos IaC presentes no repositório:**
 
 | Arquivo | Papel |

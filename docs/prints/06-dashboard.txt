@@ -1,6 +1,7 @@
 # Evidência 06 — Observabilidade (Prometheus + Grafana)
 
 **Data:** 2026-11-18
+**Print:** `06-dashboard.png` ✅ (container de observabilidade)
 
 ## 1. /stub_status do Nginx (fonte das métricas)
 

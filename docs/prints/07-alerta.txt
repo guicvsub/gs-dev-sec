@@ -1,0 +1,24 @@
+# Evidência 07 — Alerta disparado
+
+**Data:** 2026-11-18
+**Método:** container `travessia-web` na VPS foi parado (derrubado) para provocar a falha; aguardado o tempo de avaliação do Prometheus.
+
+**Print:** `07-alerta.png` ✅ (alerta `MVPDown` em estado `firing`)
+
+**Confirmação via API do Prometheus** (`/api/v1/alerts`):
+
+```
+MVPDown         -> state: firing     (critical) "O Travessia não respondeu por mais de 1 minuto."
+MVPHighLatency  -> state: pending    (warning)  latência > 3 s
+```
+
+**Endpoint do alerta:** http://localhost:9090/api/v1/alerts
+**Lista no UI:** http://localhost:9090/alerts
+
+**O que disparou:**
+
+```text
+alerta MVPDown: expr=probe_success{instance="travessia-mvp"} == 0  for: 1m
+```
+
+Após a captura, o container da VPS foi **reiniciado** e o site voltou ao ar (HTTP 200).

@@ -2,6 +2,7 @@
 
 **Data:** 2026-11-18
 **URL:** http://4.168.236.152/
+**Print:** `05-site.png` ✅ (site rodando na VPS)
 
 **Verificação técnica (curl):**
 
