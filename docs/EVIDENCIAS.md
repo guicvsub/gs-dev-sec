@@ -4,17 +4,17 @@ Salve os prints em **`docs/prints/`** com os nomes exatos abaixo. O arquivo
 [`relatorio.html`](relatorio.html) carrega essas imagens; se alguma estiver faltando, ele
 mostra um espaço reservado com o nome do arquivo.
 
-> **Progresso atual (PNGs capturados):** ✅ `05-site.png`, `06-dashboard.png`,
-> `07-alerta.png`, `08-iac.png`.
+> **Progresso: COMPLETO** — os 10 PNGs de evidências estão capturados:
+> `01-pipeline.png`, `02-gitleaks.png`, `03-semgrep.png`, `04-trivy.png`,
+> `05-site.png`, `06-dashboard.png`, `07-alerta.png`, `08-iac.png`,
+> `09-barrada.png`, `10-corrigida.png`.
 >
 > **Logs reais também presentes:** `02-gitleaks.txt`, `03-semgrep.txt`, `04-trivy.txt`,
 > `05-site.txt`, `06-dashboard.txt`, `07-alerta.txt` e `08-iac.txt` — saídas reais das
 > ferramentas (Gitleaks `no leaks found`, Semgrep `0 findings`, Trivy `Total: 0`, alerta
 > `MVPDown` firing).
 >
-> **Ainda faltam PNGs:** `01-pipeline.png`, `02-gitleaks.png`, `03-semgrep.png`,
-> `04-trivy.png`, `09-barrada.png`, `10-corrigida.png`. Veja o
-> [`docs/prints/_GUIA_EVIDENCIAS.md`](prints/_GUIA_EVIDENCIAS.md).
+> **PDF finalizado:** `docs/Deploy_VPS_Travessia.pdf` (exportado do `docs/relatorio.html`).
 
 > **Dica:** capture a tela inteira (incluindo a URL do navegador ou o nome do job) e
 > evite recortar demais. Risque informações pessoais (endereço, credenciais) se necessário.
@@ -116,15 +116,15 @@ finding ou Trivy com CRITICAL/HIGH. Deve ficar claro o **motivo da barreira**.
 
 ## Checklist final da entrega
 
-- [ ] Repositório **público** no GitHub.
-- [ ] `terraform/` com state e `.tfvars` **fora** do repo (`.gitignore`).
-- [ ] Observabilidade com **4 métricas de ouro** e **alerta disparado**.
-- [ ] Pipeline: **build, Gitleaks, Semgrep e Trivy** a cada push; **deploy automático via
+- [x] Repositório **público** no GitHub.
+- [x] `terraform/` com state e `.tfvars` **fora** do repo (`.gitignore`).
+- [x] Observabilidade com **4 métricas de ouro** e **alerta disparado**.
+- [x] Pipeline: **build, Gitleaks, Semgrep e Trivy** a cada push; **deploy automático via
       SSH**; secrets em GitHub Secrets.
-- [ ] Print de execução **barrada** e **corrigida**.
-- [ ] Diagrama, responsabilidade compartilhada, **LGPD**, custo e README reproduzível.
-- [ ] Prints 1–10 salvos em `docs/prints/`.
-- [ ] PDF exportado com links clicáveis (veja abaixo).
+- [x] Print de execução **barrada** e **corrigida**.
+- [x] Diagrama, responsabilidade compartilhada, **LGPD**, custo e README reproduzível.
+- [x] Prints 1–10 salvos em `docs/prints/`.
+- [x] PDF exportado (`docs/Deploy_VPS_Travessia.pdf`).
 
 ### Como exportar o PDF
 
