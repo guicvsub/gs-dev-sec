@@ -11,6 +11,12 @@ RUN npm run build
 # ---------- servidor estático (roda sem root, porta 8080) ----------
 FROM nginxinc/nginx-unprivileged:alpine
 
+# Corrige vulnerabilidades (brotli, curl, musl, zlib...) da base Alpine.
+# O apk roda como root apenas durante o build; o runtime continua sem root.
+USER root
+RUN apk upgrade --no-cache
+USER 101:101
+
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 

@@ -1,0 +1,21 @@
+# Evidência 02 — Gitleaks (sem segredos)
+
+**Data:** 2026-11-18
+**Comando:** equivalente ao step do pipeline (`detect --source /repo --config /repo/.gitleaks.toml --redact`)
+
+```
+    ○
+    │╲
+    │ ○
+    ○ ░
+    ░    gitleaks
+
+INF 7 commits scanned.
+INF scanned ~407030 bytes (407.03 KB) in 2.39s
+INF no leaks found
+```
+
+**Resultado:** GATE OK — nenhum segredo no histórico do Git.
+
+> Para a evidência em PNG, tire um print do step "Procurar segredos no histórico"
+> no GitHub Actions (job Segurança → Gitleaks).

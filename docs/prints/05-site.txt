@@ -1,0 +1,44 @@
+# Evidência 05 — Site público no ar (MVP no ar)
+
+**Data:** 2026-11-18
+**URL:** http://4.168.236.152/
+
+**Verificação técnica (curl):**
+
+```
+HTTP/1.1 200 OK
+tempo total: 0.65s
+```
+
+HTML servido (início):
+
+```html
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta name="description" content="Assistente que identifica faixa de pedestre e semáforo
+      e avisa por voz e vibração.">
+    <title>Travessia — assistente de pedestre</title>
+    <script type="module" crossorigin src="/assets/index-Dy7er2_n.js"></script>
+  </head>
+  <body><div id="root"></div></body>
+</html>
+```
+
+**Resultado:** MVP **no ar** — HTTP 200.
+
+> Para o print em PNG, abra http://4.168.236.152 em um navegador, clique em
+> **Iniciar** e capture a tela com a URL na barra de endereço.
+
+---
+
+# Situação do /stub_status (importante)
+
+O endpoint `http://4.168.236.152/stub_status` **ainda retorna o HTML do site**
+(não as métricas de conexões do Nginx). Isso significa que **a imagem atualmente
+publicada na VPS é a anterior**, sem o `nginx.conf` atualizado com o bloco
+`location = /stub_status`.
+
+Para o Prometheus coletar as métricas, é necessário **redeployar o código novo** na VPS
+(`docker compose up -d --build web`). O `nginx.conf` deste repositório já prepara o
+endpoint; só falta subir a imagem nova.

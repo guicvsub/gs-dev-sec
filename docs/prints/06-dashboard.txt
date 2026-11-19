@@ -1,0 +1,42 @@
+# Evidência 06 — Observabilidade (Prometheus + Grafana)
+
+**Data:** 2026-11-18
+
+## 1. /stub_status do Nginx (fonte das métricas)
+
+O container local (imagem atualizada deste repositório) respondeu o endpoint de
+métricas do Nginx corretamente:
+
+```
+Active connections: 1
+server accepts handled requests
+ 1 1 1
+Reading: 0 Writing: 1 Waiting: 0
+```
+
+## 2. Stack de observabilidade
+
+Subir localmente (permitido pela rubrica), apontando para o MVP publicado:
+
+```bash
+docker compose -f docker-compose.observability.yml up -d
+```
+
+| Serviço | URL | Papel |
+| --- | --- | --- |
+| Prometheus | http://localhost:9090 | Métricas + alertas (MVPDown, MVPHighLatency) |
+| Grafana | http://localhost:3000 (admin/admin) | Dashboard das 4 métricas de ouro |
+| blackbox-exporter | http://localhost:9115 | Sonda de disponibilidade/latência |
+| nginx-exporter | http://localhost:9113 | Métricas de conexões do Nginx |
+
+## 3. 4 métricas de ouro (dashboard "Travessia - 4 Métricas de Ouro")
+
+| Métrica | PromQL |
+| --- | --- |
+| Latência | `probe_duration_seconds{instance="travessia-mvp"}` |
+| Tráfego | `rate(nginx_http_requests_total{instance="travessia-mvp"}[5m])` |
+| Erros/Disponibilidade | `probe_success{instance="travessia-mvp"}` |
+| Saturação | `nginx_connections_active{instance="travessia-mvp"}` |
+
+> Para os prints em PNG: capture o dashboard no Grafana e o alerta
+> (MVPDown/MVPHighLatency) no estado firing no Prometheus (http://localhost:9090/alerts).

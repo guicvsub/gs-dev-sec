@@ -1,0 +1,39 @@
+# Evidência 03 — Semgrep (SAST)
+
+**Data:** 2026-11-18
+**Comando:** `semgrep scan --config p/default --config p/secrets --sarif --output semgrep.sarif`
+
+Antes da correção da tag móvel do `appleboy/ssh-action@v1.2.0`:
+
+```
+┌──────────────┐
+│ Scan Summary │
+└──────────────┘
+✅ Scan completed successfully.
+ • Findings: 1 (1 blocking)
+ • Rules run: 616
+ • Targets scanned: 59
+
+RULE: yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+MSG : GitHub Actions step uses a mutable tag or branch reference...
+FILE: .github/workflows/deploy.yml
+```
+
+**Correção aplicada:** fixado o SHA completo (`appleboy/ssh-action@7eaf7667...`) no `deploy.yml`.
+
+Após a correção (rodada novamente):
+
+```
+┌──────────────┐
+│ Scan Summary │
+└──────────────┘
+✅ Scan completed successfully.
+ • Findings: 0 (0 blocking)
+ • Rules run: 616
+ • Targets scanned: 61
+```
+
+**Resultado:** GATE OK (0 findings) após correção.
+
+> Para a evidência em PNG, tire os prints dos steps "Analisar o código" (Semgrep)
+> no GitHub Actions — uma execução barrada (1 blocking) e a corrigida (0 findings).

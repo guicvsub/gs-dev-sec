@@ -1,0 +1,30 @@
+# Evidência 04 — Trivy (vulnerabilidades da imagem)
+
+**Data:** 2026-11-18
+**Comando:** `trivy image --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed travessia-web:evidence`
+
+**Antes da correção** (base Alpine 3.24.2 desatualizada):
+
+```
+travessia-web:evidence (alpine 3.24.2)
+Total: 13 (HIGH: 12, CRITICAL: 1)
+  brotli-libs  CVE-2026-111497  CRITICAL  1.2.0-r1 -> 1.2.1-r0
+  curl         CVE-2026-92392   HIGH       8.22.0-r0 -> 8.23.0-r0
+  musl         CVE-2026-107891  HIGH
+  zlib         CVE-2026-85091   HIGH
+  ...
+```
+
+**Correção aplicada:** `apk upgrade --no-cache` no estágio final do `Dockerfile`.
+
+**Depois da correção:**
+
+```
+travessia-web:evidence (alpine 3.24.2)
+Total: 0 (HIGH: 0, CRITICAL: 0)
+```
+
+**Resultado:** GATE OK — nenhuma vulnerabilidade CRITICAL/HIGH após o upgrade.
+
+> Para a evidência em PNG, tire o print do step "Escanear a imagem com Trivy"
+> no GitHub Actions (job Segurança → Trivy).

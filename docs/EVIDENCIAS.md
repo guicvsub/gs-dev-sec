@@ -4,6 +4,12 @@ Salve os prints em **`docs/prints/`** com os nomes exatos abaixo. O arquivo
 [`relatorio.html`](relatorio.html) carrega essas imagens; se alguma estiver faltando, ele
 mostra um espaço reservado com o nome do arquivo.
 
+> **Já geradas (logs reais):** `docs/prints/02-gitleaks.txt`, `03-semgrep.txt`,
+> `04-trivy.txt`, `05-site.txt`, `06-dashboard.txt` e `08-iac.txt` contêm as **saídas reais**
+> das ferramentas (Gitleaks `no leaks found`, Semgrep `0 findings`, Trivy `Total: 0`) —
+> provas de que os scans passaram. Os PNGs de tela ainda precisam ser capturados conforme
+> este checklist e o [`docs/prints/_GUIA_EVIDENCIAS.md`](prints/_GUIA_EVIDENCIAS.md).
+
 > **Dica:** capture a tela inteira (incluindo a URL do navegador ou o nome do job) e
 > evite recortar demais. Risque informações pessoais (endereço, credenciais) se necessário.
 

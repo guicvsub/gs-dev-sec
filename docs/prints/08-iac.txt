@@ -1,0 +1,34 @@
+# Evidência 08 — IaC (Terraform / OpenStack)
+
+**Arquivos IaC presentes no repositório:**
+
+| Arquivo | Papel |
+| --- | --- |
+| `terraform/versions.tf` | Provider OpenStack + backend (state fora do repo) |
+| `terraform/providers.tf` | Credenciais via ambiente/`.tfvars` |
+| `terraform/variables.tf` | Inclui `admin_ssh_cidr` (nunca `0.0.0.0/0`) |
+| `terraform/network.tf` | Security group: só porta 80 pública; SSH restrito |
+| `terraform/compute.tf` | Instância + floating IP + keypair |
+| `terraform/outputs.tf` | `public_ip`, `public_url`, `instance_name` |
+| `terraform/backend.hcl.example` | Backend remoto (state fora do git) |
+| `terraform/tfvars.example` | Template (`.tfvars` real fica fora do repo) |
+
+**Pontos exigidos pela rubrica:**
+
+- **State fora do repo:** `terraform/*.tfstate`, `backend.hcl` e `.tfvars` no `.gitignore`.
+- **Porta admin nunca aberta para `0.0.0.0/0`:** no `network.tf`, o SSH usa
+  `admin_ssh_cidr` (IP específico); somente a porta 80 fica pública.
+- **Nuvem criada por Terraform:** provisão da VPS AIS via OpenStack.
+
+Para rodar:
+
+```bash
+cd terraform
+terraform init -backend-config=backend.hcl
+terraform plan -var-file=terraform.tfvars
+terraform apply -var-file=terraform.tfvars
+```
+
+> Para o print em PNG (`08-iac.png`): rode `terraform apply` e capture o resumo
+> (`Apply complete! Resources: N added`) mostrando a instância e o security group,
+> com o `admin_ssh_cidr` setado para um IP específico.
